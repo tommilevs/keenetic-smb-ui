@@ -8,3 +8,6 @@ Thumbs.db
 
 # CI workflow is published manually: the push PAT has no 'workflow' scope
 /.github/
+
+# local task bookkeeping
+.task-guid.txt
