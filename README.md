@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/banner.svg" alt="Keenetic SMB UI" width="100%"/>
+<img src="assets/banner.svg?v=2" alt="Keenetic SMB UI" width="100%"/>
 
 <br/>
 
