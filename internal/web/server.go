@@ -58,6 +58,7 @@ func New(cfg *config.Config) (*Server, error) {
 	mux.HandleFunc("/api/remotes/apply", s.auth(s.handleApply))
 	mux.HandleFunc("/api/remotes/status", s.auth(s.handleRemoteStatus))
 	mux.HandleFunc("/api/users", s.auth(s.handleUsers))
+	mux.HandleFunc("/api/ndms/users", s.auth(s.handleNDMSUsers))
 	mux.HandleFunc("/api/logs", s.auth(s.handleLogs))
 	mux.HandleFunc("/api/update", s.auth(s.handleUpdate))
 

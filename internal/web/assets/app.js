@@ -274,6 +274,26 @@ async function startApp() {
   };
   $('remote-add').onclick = () => $('remotes').appendChild(rowRemote());
   $('user-add').onclick = () => $('users').appendChild(rowUser());
+  $('users-import').onclick = async () => {
+    const msg = $('users-msg');
+    try {
+      const r = await api('/api/ndms/users');
+      if (!r.available) { msg.textContent = 'NDMS CLI недоступен на этом устройстве'; return; }
+      if (r.error) { msg.textContent = 'Ошибка NDMS: ' + r.error; return; }
+      const have = new Set([...document.querySelectorAll('#users tr .f-name')].map((i) => i.value.trim()));
+      let added = 0;
+      for (const u of r.users || []) {
+        if (have.has(u.name)) continue;
+        $('users').appendChild(rowUser({ name: u.name, enabled: true, readonly: !!u.readonly }));
+        added++;
+      }
+      msg.textContent = added
+        ? `Добавлено из роутера: ${added}. Задайте пароли и нажмите «Сохранить».`
+        : 'Все пользователи роутера уже добавлены';
+    } catch (e) {
+      msg.textContent = 'Ошибка: ' + e.message;
+    }
+  };
   $('remotes-save').onclick = async () => {
     await api('/api/remotes', { method: 'POST', body: JSON.stringify({ remotes: collectRemotes() }) });
     state.cfg = null; fillForms(); refresh();
