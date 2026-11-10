@@ -165,6 +165,7 @@ function rowRemote(r = {}) {
     <td><input class="f-user" value="${r.user || ''}" placeholder="root"></td>
     <td><input class="f-pass" type="password" placeholder="пароль"></td>
     <td><input class="f-en" type="checkbox" ${r.enabled !== false ? 'checked' : ''}></td>
+    <td><input class="f-ro" type="checkbox" ${r.readonly ? 'checked' : ''} title="только чтение"></td>
     <td class="status"><span class="pill">—</span></td>
     <td><button class="icon-btn" title="удалить">✕</button></td>`;
   tr.querySelector('.icon-btn').onclick = () => tr.remove();
@@ -180,6 +181,7 @@ function collectRemotes() {
     user: tr.querySelector('.f-user').value.trim(),
     password: tr.querySelector('.f-pass').value,
     enabled: tr.querySelector('.f-en').checked,
+    readonly: tr.querySelector('.f-ro').checked,
   }));
 }
 
@@ -214,6 +216,11 @@ async function fillForms() {
     $('smb-wg').value = c.smb.workgroup;
     $('smb-name').value = c.smb.server_string;
     $('smb-share').value = c.smb.share_name;
+    $('smb-path').value = c.smb.share_path || '';
+    $('smb-ports').value = c.smb.ports || '445';
+    $('smb-sharero').checked = !!c.smb.share_readonly;
+    $('smb-forceuser').checked = c.smb.force_user !== false;
+    $('smb-extra').value = (c.smb.extra_options || []).join('\n');
     $('smb-min').value = c.smb.min_protocol;
     $('smb-max').value = c.smb.max_protocol;
     $('smb-enabled').checked = !!c.smb.enabled;
@@ -245,6 +252,11 @@ async function saveConfig() {
   cfg.smb.workgroup = $('smb-wg').value.trim();
   cfg.smb.server_string = $('smb-name').value.trim();
   cfg.smb.share_name = $('smb-share').value.trim();
+  cfg.smb.share_path = $('smb-path').value.trim();
+  cfg.smb.ports = $('smb-ports').value.trim();
+  cfg.smb.share_readonly = $('smb-sharero').checked;
+  cfg.smb.force_user = $('smb-forceuser').checked;
+  cfg.smb.extra_options = $('smb-extra').value.split('\n').map((s) => s.trim()).filter(Boolean);
   cfg.smb.min_protocol = $('smb-min').value;
   cfg.smb.max_protocol = $('smb-max').value;
   cfg.smb.enabled = $('smb-enabled').checked;

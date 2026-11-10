@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -34,18 +35,21 @@ type Remote struct {
 
 // SMB holds settings of the managed Samba instance.
 type SMB struct {
-	Enabled      bool     `json:"enabled"`
-	ListenIP     string   `json:"listen_ip"`
-	BindDevice   string   `json:"bind_device"`
-	Workgroup    string   `json:"workgroup"`
-	ServerString string   `json:"server_string"`
-	ShareName    string   `json:"share_name"`
-	SharePath    string   `json:"share_path"`
-	MinProtocol  string   `json:"min_protocol"`
-	MaxProtocol  string   `json:"max_protocol"`
-	Users        []User   `json:"users"`
-	GuestOK      bool     `json:"guest_ok"`
-	ExtraOptions []string `json:"extra_options,omitempty"`
+	Enabled       bool     `json:"enabled"`
+	ListenIP      string   `json:"listen_ip"`
+	BindDevice    string   `json:"bind_device"`
+	Workgroup     string   `json:"workgroup"`
+	ServerString  string   `json:"server_string"`
+	ShareName     string   `json:"share_name"`
+	SharePath     string   `json:"share_path"`
+	ShareReadOnly bool     `json:"share_readonly"`
+	ForceUser     bool     `json:"force_user"`
+	Ports         string   `json:"ports"`
+	MinProtocol   string   `json:"min_protocol"`
+	MaxProtocol   string   `json:"max_protocol"`
+	Users         []User   `json:"users"`
+	GuestOK       bool     `json:"guest_ok"`
+	ExtraOptions  []string `json:"extra_options,omitempty"`
 }
 
 // Web holds HTTP UI settings.
@@ -99,6 +103,8 @@ func Default() *Config {
 			ServerString: "keenetic-smb-ui",
 			ShareName:    "all",
 			SharePath:    "/opt/var/keenetic-smb-ui/share",
+			Ports:        "445",
+			ForceUser:    true,
 			MinProtocol:  "SMB2",
 			MaxProtocol:  "SMB3_11",
 			Users: []User{
@@ -130,6 +136,11 @@ func Load(path string) (*Config, error) {
 	if err := json.Unmarshal(data, cfg); err != nil {
 		return nil, err
 	}
+	// Configs written before force_user existed default to enabling it: without
+	// it ordinary Samba users cannot write into the root-owned aggregated tree.
+	if !strings.Contains(string(data), `"force_user"`) {
+		cfg.SMB.ForceUser = true
+	}
 	cfg.normalize()
 	return cfg, nil
 }
@@ -159,6 +170,9 @@ func (c *Config) normalize() {
 	}
 	if c.SMB.MaxProtocol == "" {
 		c.SMB.MaxProtocol = def.SMB.MaxProtocol
+	}
+	if c.SMB.Ports == "" {
+		c.SMB.Ports = def.SMB.Ports
 	}
 	if c.Paths.SambaConf == "" {
 		c.Paths.SambaConf = def.Paths.SambaConf

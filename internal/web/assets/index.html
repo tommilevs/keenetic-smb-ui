@@ -74,11 +74,18 @@
             <label>Рабочая группа<input id="smb-wg"></label>
             <label>Имя сервера<input id="smb-name"></label>
             <label>Имя шары<input id="smb-share"></label>
+            <label>Путь шары<input id="smb-path"></label>
+            <label>Порты SMB<input id="smb-ports" placeholder="445"></label>
             <label>Минимальный протокол<select id="smb-min"><option>SMB2</option><option>SMB2_10</option><option>SMB3</option><option>SMB3_02</option><option>SMB3_11</option></select></label>
             <label>Максимальный протокол<select id="smb-max"><option>SMB2_10</option><option>SMB3</option><option>SMB3_02</option><option>SMB3_11</option></select></label>
             <label class="check"><input type="checkbox" id="smb-enabled"> Сервер включён</label>
             <label class="check"><input type="checkbox" id="smb-guest"> Гостевой доступ</label>
+            <label class="check"><input type="checkbox" id="smb-sharero"> Шара только для чтения</label>
+            <label class="check" title="Записывать от root — иначе обычные пользователи не смогут писать в root-овые каталоги агрегированной шары"><input type="checkbox" id="smb-forceuser"> Запись от root (force user)</label>
           </div>
+          <label class="mtop">Дополнительные параметры smb.conf (по одному на строку)
+            <textarea id="smb-extra" rows="4" placeholder="kernel oplocks = yes&#10;veto files = /Thumbs.db/"></textarea>
+          </label>
           <div class="row">
             <button class="btn" id="smb-start">Запустить</button>
             <button class="btn" id="smb-stop">Остановить</button>
@@ -94,7 +101,7 @@
       <article class="card wide">
         <h3>Общие диски Proxmox</h3>
         <p class="hint">Подключаются в агрегированную шару. Пароли хранятся в конфиге на роутере.</p>
-        <div class="tablewrap"><table class="tbl"><thead><tr><th>Имя</th><th>Хост</th><th>Шара</th><th>Логин</th><th>Вкл</th><th>Статус</th><th></th></tr></thead><tbody id="remotes"></tbody></table></div>
+        <div class="tablewrap"><table class="tbl"><thead><tr><th>Имя</th><th>Хост</th><th>Шара</th><th>Логин</th><th>Пароль</th><th>Вкл</th><th>RO</th><th>Статус</th><th></th></tr></thead><tbody id="remotes"></tbody></table></div>
         <div class="row"><button class="btn" id="remote-add">Добавить диск</button><button class="btn ghost" id="remotes-save">Сохранить список</button></div>
       </article>
     </section>

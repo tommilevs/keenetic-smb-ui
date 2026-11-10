@@ -50,7 +50,7 @@ func Render(cfg *config.Config) string {
 	fmt.Fprintf(&b, "   server max protocol = %s\n", orDefault(s.MaxProtocol, "SMB3_11"))
 	fmt.Fprintf(&b, "   interfaces = %s\n", s.ListenIP)
 	fmt.Fprintf(&b, "   bind interfaces only = yes\n")
-	fmt.Fprintf(&b, "   smb ports = 445\n")
+	fmt.Fprintf(&b, "   smb ports = %s\n", orDefault(s.Ports, "445"))
 	fmt.Fprintf(&b, "   log file = /opt/var/keenetic-smb-ui/log/samba.log\n")
 	fmt.Fprintf(&b, "   max log size = 1024\n")
 	fmt.Fprintf(&b, "   load printers = no\n")
@@ -80,7 +80,13 @@ func Render(cfg *config.Config) string {
 	fmt.Fprintf(&b, "   path = %s\n", orDefault(s.SharePath, "/opt/var/keenetic-smb-ui/share"))
 	fmt.Fprintf(&b, "   comment = aggregated storage\n")
 	fmt.Fprintf(&b, "   browseable = yes\n")
-	fmt.Fprintf(&b, "   read only = %s\n", yesNo(cfg.SMB.GuestOK))
+	fmt.Fprintf(&b, "   read only = %s\n", yesNo(s.ShareReadOnly))
+	if s.ForceUser {
+		// Aggregated tree mixes root-owned CIFS mounts and router disks; Samba
+		// must act as root there or ordinary Samba users cannot write.
+		fmt.Fprintf(&b, "   force user = root\n")
+		fmt.Fprintf(&b, "   force group = root\n")
+	}
 	fmt.Fprintf(&b, "   guest ok = %s\n", yesNo(cfg.SMB.GuestOK))
 	fmt.Fprintf(&b, "   follow symlinks = yes\n")
 	fmt.Fprintf(&b, "   wide links = yes\n")
