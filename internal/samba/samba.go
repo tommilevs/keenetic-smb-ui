@@ -81,7 +81,11 @@ func Render(cfg *config.Config) string {
 	fmt.Fprintf(&b, "   path = %s\n", orDefault(s.SharePath, "/opt/var/keenetic-smb-ui/share"))
 	fmt.Fprintf(&b, "   comment = aggregated storage\n")
 	fmt.Fprintf(&b, "   browseable = yes\n")
-	fmt.Fprintf(&b, "   read only = %s\n", yesNo(s.ShareReadOnly))
+	users := enabledUsers(cfg)
+	_, hasRootACL := rootFolder(cfg.Folders)
+	if !hasRootACL || len(users) == 0 || cfg.SMB.GuestOK {
+		fmt.Fprintf(&b, "   read only = %s\n", yesNo(s.ShareReadOnly))
+	}
 	if s.ForceUser {
 		// Aggregated tree mixes root-owned CIFS mounts and router disks; Samba
 		// must act as root there or ordinary Samba users cannot write.
@@ -93,8 +97,25 @@ func Render(cfg *config.Config) string {
 	fmt.Fprintf(&b, "   wide links = yes\n")
 	fmt.Fprintf(&b, "   create mask = 0664\n")
 	fmt.Fprintf(&b, "   directory mask = 0775\n")
-	users := enabledUsers(cfg)
-	if len(users) > 0 && !cfg.SMB.GuestOK {
+	switch {
+	case hasRootACL && len(users) > 0 && !cfg.SMB.GuestOK:
+		// The root folder has its own ACL: readers see the aggregate share,
+		// writers additionally get a "write list" on top of "read only = yes" —
+		// exactly how the per-folder ACL shares below are built.
+		readers := acl.Readers(cfg.Folders, "", users)
+		writers := acl.Writers(cfg.Folders, "", users)
+		if len(readers) > 0 {
+			// read only = yes plus an explicit write list is the only reliable
+			// way to express per-user rights on a Samba share.
+			fmt.Fprintf(&b, "   read only = yes\n")
+			fmt.Fprintf(&b, "   valid users = %s\n", strings.Join(readers, " "))
+			if len(writers) > 0 {
+				fmt.Fprintf(&b, "   write list = %s\n", strings.Join(writers, " "))
+			}
+		} else {
+			fmt.Fprintf(&b, "   valid users = %s\n", strings.Join(users, " "))
+		}
+	case len(users) > 0 && !cfg.SMB.GuestOK:
 		// When folder ACLs exist, the aggregate share is limited to users who
 		// may at least read the share root; everybody else reaches the tree
 		// through their own folder shares below.
@@ -111,6 +132,16 @@ func Render(cfg *config.Config) string {
 	}
 	renderFolders(&b, cfg, users)
 	return b.String()
+}
+
+// rootFolder returns the ACL entry of the share root itself, if configured.
+func rootFolder(folders []acl.Folder) (acl.Folder, bool) {
+	for _, f := range folders {
+		if acl.CleanPath(f.Path) == "" {
+			return f, true
+		}
+	}
+	return acl.Folder{}, false
 }
 
 // renderFolders emits one Samba share per folder that has an ACL, using

@@ -299,17 +299,41 @@ async function startApp() {
   };
   $('remote-add').onclick = () => $('remotes').appendChild(rowRemote());
   $('user-add').onclick = () => $('users').appendChild(rowUser());
-  $('acl-add').onclick = async () => {
+  $('acl-mkdir').onclick = async () => {
+    const name = prompt('Название новой папки в «' + aclPathLabel(aclState.selected) + '»:');
+    if (name === null) return;
     try {
-      const d = await api('/api/folders');
-      $('acl-body').appendChild(aclRow({ path: '', enabled: true, rules: [] }, d.users || [], null));
-    } catch (e) { $('acl-msg').textContent = 'Ошибка: ' + e.message; }
+      await api('/api/fs/mkdir', { method: 'POST', body: JSON.stringify({ path: aclState.selected, name: name.trim() }) });
+      aclState.entries.delete(aclState.selected);
+      await aclLoadDir(aclState.selected);
+      aclRenderTree();
+      $('acl-msg').textContent = 'Папка создана.';
+    } catch (e) { $('acl-msg').textContent = 'Не удалось создать папку: ' + e.message; }
+  };
+  $('acl-perms').onclick = () => {
+    const panel = $('acl-perms-panel');
+    panel.hidden = !panel.hidden;
+    $('acl-perms').classList.toggle('kbtn--active', !panel.hidden);
+    if (!panel.hidden) aclRenderPerms();
+  };
+  $('acl-refresh').onclick = async () => {
+    aclState.entries.clear();
+    aclState.expanded.clear();
+    aclState.expanded.add('');
+    await aclLoadDir('');
+    aclRenderTree();
   };
   $('acl-save').onclick = async () => {
     try {
-      const r = await api('/api/folders', { method: 'POST', body: JSON.stringify({ folders: collectAcl() }) });
-      await loadAcl();
-      $('acl-msg').textContent = r.warning ? ('Сохранено с предупреждением: ' + r.warning) : 'Сохранено, Samba перезапущена.';
+      const folders = [...aclState.folders.values()].map((f) => ({
+        id: f.id || '', path: f.path || '', name: f.name || '',
+        enabled: f.enabled !== false, rules: f.rules || [],
+      }));
+      const r = await api('/api/folders', { method: 'POST', body: JSON.stringify({ folders }) });
+      aclState.dirty = false;
+      $('acl-save').disabled = true;
+      await loadAcl(true);
+      $('acl-msg').textContent = r.warning ? ('Сохранено с предупреждением: ' + r.warning) : 'Права сохранены, Samba перезапущена.';
     } catch (e) { $('acl-msg').textContent = 'Ошибка: ' + e.message; }
   };
   $('users-import').onclick = async () => {
@@ -382,93 +406,253 @@ async function startApp() {
   state.timer = setInterval(refresh, 5000);
 }
 
-const ACL_CHOICES = [
-  ['', '— наследуется'],
-  ['ro', 'Чтение'],
+/* ── «Файлы и папки»: права на папки в стиле Keenetic ─────────────────── */
+
+const ACL_LEVELS = [
   ['rw', 'Чтение и запись'],
-  ['none', 'Запрещён'],
-  ['ro!', 'Только здесь: чтение'],
-  ['rw!', 'Только здесь: запись'],
-  ['none!', 'Только здесь: запрещён'],
+  ['ro', 'Только чтение'],
+  ['none', 'Доступ запрещен'],
 ];
 
-function aclSelect(value, user) {
-  const cur = value || '';
-  return `<select class="a-cell" data-user="${user}">` +
-    ACL_CHOICES.map(([v, label]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${label}</option>`).join('') +
-    '</select>';
+const ICON = {
+  chevron: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 2.5 8 6l-3.5 3.5"/></svg>',
+  folder: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 4.5A1.5 1.5 0 0 1 3 3h3l1.4 1.5H13A1.5 1.5 0 0 1 14.5 6v6A1.5 1.5 0 0 1 13 13.5H3A1.5 1.5 0 0 1 1.5 12z"/></svg>',
+};
+
+const aclState = {
+  users: [],
+  folders: new Map(),   // path → {id,path,name,enabled,rules[]}
+  share: '',
+  selected: '',
+  expanded: new Set(['']),
+  entries: new Map(),   // path → entries[]
+  sizes: new Map(),     // path → formatted size
+  pending: new Set(),
+  dirty: false,
+  loaded: false,
+};
+
+function aclPathLabel(p) {
+  if (!p) return aclState.share || 'шара';
+  const parts = p.split('/');
+  return parts[parts.length - 1];
 }
 
-async function loadAcl() {
+function aclFolder(p) {
+  return aclState.folders.get(p) || null;
+}
+
+function aclRuleFor(p, user) {
+  const f = aclFolder(p);
+  if (!f) return null;
+  return (f.rules || []).find((r) => (r.user || '').toLowerCase() === user.toLowerCase()) || null;
+}
+
+// aclEffective repeats the server-side inheritance: an explicit rule on the
+// folder wins, otherwise the nearest ancestor rule with inherit applies.
+function aclEffective(p, user) {
+  const own = aclRuleFor(p, user);
+  if (own) return own.access || 'none';
+  let cur = p;
+  while (cur !== '') {
+    const cut = cur.lastIndexOf('/');
+    cur = cut < 0 ? '' : cur.slice(0, cut);
+    const r = aclRuleFor(cur, user);
+    if (r && r.inherit !== false) return r.access || 'none';
+  }
+  return 'none';
+}
+
+function aclSetAccess(p, user, access) {
+  let f = aclFolder(p);
+  if (!f) {
+    f = { id: '', path: p, name: '', enabled: true, rules: [] };
+    aclState.folders.set(p, f);
+  }
+  f.rules = f.rules || [];
+  const i = f.rules.findIndex((r) => (r.user || '').toLowerCase() === user.toLowerCase());
+  const rule = { user, access, inherit: true };
+  if (i >= 0) f.rules[i] = rule; else f.rules.push(rule);
+  aclState.dirty = true;
+  $('acl-save').disabled = false;
+  $('acl-msg').textContent = 'Есть несохранённые изменения';
+}
+
+async function aclLoadDir(p) {
+  if (aclState.entries.has(p)) return aclState.entries.get(p);
+  const data = await api('/api/fs?path=' + encodeURIComponent(p || ''));
+  if (data.share) aclState.share = data.share;
+  aclState.entries.set(p, data.entries || []);
+  return aclState.entries.get(p);
+}
+
+function aclFormatSize(bytes) {
+  if (bytes === null || bytes === undefined || bytes < 0) return '—';
+  const units = ['Б', 'КБ', 'МБ', 'ГБ', 'ТБ'];
+  let v = bytes;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i += 1; }
+  const num = v >= 10 || i === 0 ? Math.round(v) : Math.round(v * 10) / 10;
+  return String(num).replace('.', ',') + ' ' + units[i];
+}
+
+function aclShareLabel() {
+  const st = state.status || {};
+  if (st.smb_ip && st.share) return '\\\\' + st.smb_ip + '\\' + st.share;
+  return aclState.share || '';
+}
+
+function aclRenderTree() {
+  const tree = $('acl-tree');
+  tree.innerHTML = '';
+  const rootEntries = aclState.entries.get('') || [];
+  aclNode(tree, { path: '', name: aclState.share || 'шара', dir: true, hasChildren: rootEntries.some((e) => e.dir), size: -1 }, 0, true);
+  const walk = (parent, depth) => {
+    for (const e of aclState.entries.get(parent) || []) {
+      if (!e.dir) continue;
+      aclNode(tree, e, depth, false);
+      if (aclState.expanded.has(e.path)) walk(e.path, depth + 1);
+    }
+  };
+  if (aclState.expanded.has('')) walk('', 1);
+  $('acl-share').textContent = aclShareLabel();
+}
+
+function aclNode(tree, e, depth, isRoot) {
+  const expanded = aclState.expanded.has(e.path);
+  const row = document.createElement('div');
+  row.className = 'kfm-node' + (aclState.selected === e.path ? ' kfm-node--active' : '');
+  row.dataset.path = e.path;
+  row.setAttribute('role', 'treeitem');
+  row.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  const hasChev = isRoot || e.hasChildren;
+  row.innerHTML =
+    '<div class="kfm-node__main" style="--depth:' + (isRoot ? 0 : depth) + '">' +
+      '<span class="kfm-chev' + (hasChev ? '' : ' kfm-chev--none') + '" data-chev>' + ICON.chevron + '</span>' +
+      '<span class="kfm-type">' + ICON.folder + '</span>' +
+      '<span class="kfm-name"></span>' +
+    '</div>' +
+    '<span class="kfm-size" data-size></span>';
+  row.querySelector('.kfm-name').textContent = e.name;
+  const chev = row.querySelector('[data-chev]');
+  if (expanded) chev.classList.add('kfm-chev--open');
+  const sizeEl = row.querySelector('[data-size]');
+  if (isRoot) {
+    sizeEl.textContent = '';
+  } else if (e.remote) {
+    sizeEl.textContent = '—';
+    sizeEl.title = 'Сетевой диск: размер не подсчитывается';
+  } else if (typeof e.size === 'number' && e.size >= 0) {
+    sizeEl.textContent = aclFormatSize(e.size);
+  } else if (aclState.sizes.has(e.path)) {
+    sizeEl.textContent = aclState.sizes.get(e.path);
+  } else {
+    sizeEl.textContent = '…';
+    aclRequestSize(e.path, sizeEl);
+  }
+  row.onclick = () => aclSelectPath(e.path);
+  chev.onclick = async (ev) => {
+    ev.stopPropagation();
+    if (!hasChev) return;
+    if (aclState.expanded.has(e.path)) {
+      aclState.expanded.delete(e.path);
+    } else {
+      aclState.expanded.add(e.path);
+      try { await aclLoadDir(e.path); } catch (err) { $('acl-msg').textContent = 'Ошибка: ' + err.message; }
+    }
+    aclRenderTree();
+  };
+  tree.appendChild(row);
+}
+
+async function aclRequestSize(p, el) {
+  if (aclState.pending.has(p)) return;
+  if (aclState.sizes.has(p)) { el.textContent = aclState.sizes.get(p); return; }
+  aclState.pending.add(p);
+  try {
+    const st = await api('/api/fs/size?path=' + encodeURIComponent(p));
+    if (st.ready) {
+      const txt = (st.partial ? '≈ ' : '') + aclFormatSize(st.bytes);
+      aclState.sizes.set(p, txt);
+      if (el.isConnected) el.textContent = txt;
+      aclState.pending.delete(p);
+    } else {
+      aclState.pending.delete(p);
+      setTimeout(() => { if (el.isConnected) aclRequestSize(p, el); }, 1500);
+    }
+  } catch (err) {
+    aclState.pending.delete(p);
+    if (el.isConnected) el.textContent = '—';
+  }
+}
+
+function aclSelectPath(p) {
+  aclState.selected = p;
+  $('acl-perms').disabled = false;
+  aclRenderTree();
+  if (!$('acl-perms-panel').hidden) aclRenderPerms();
+}
+
+function aclRenderPerms() {
+  const box = $('acl-users');
+  box.innerHTML = '';
+  if (!aclState.users.length) {
+    box.innerHTML = '<div class="kfm-empty">Нет пользователей SMB — добавьте их в разделе «Пользователи».</div>';
+    return;
+  }
+  const p = aclState.selected;
+  for (const u of aclState.users) {
+    const row = document.createElement('div');
+    row.className = 'kfm-perm';
+    const user = document.createElement('div');
+    user.className = 'kfm-perm__user';
+    user.textContent = u;
+    user.title = u;
+    const wrap = document.createElement('div');
+    wrap.className = 'kfm-select';
+    const sel = document.createElement('select');
+    sel.setAttribute('aria-label', 'Доступ ' + u + ' к папке ' + aclPathLabel(p));
+    const cur = aclEffective(p, u);
+    for (const [v, label] of ACL_LEVELS) {
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = label;
+      o.selected = v === cur;
+      sel.appendChild(o);
+    }
+    sel.onchange = () => aclSetAccess(p, u, sel.value);
+    wrap.appendChild(sel);
+    row.appendChild(user);
+    row.appendChild(wrap);
+    box.appendChild(row);
+  }
+}
+
+async function loadAcl(force) {
+  if (aclState.loaded && !force) {
+    aclRenderTree();
+    return;
+  }
   const msg = $('acl-msg');
   try {
     const data = await api('/api/folders');
-    renderAcl(data);
-    msg.textContent = '';
+    aclState.users = data.users || [];
+    aclState.folders.clear();
+    for (const f of data.folders || []) aclState.folders.set(f.path || '', f);
+    aclState.entries.clear();
+    aclState.sizes.clear();
+    aclState.expanded.clear();
+    aclState.expanded.add('');
+    await aclLoadDir('');
+    aclState.loaded = true;
+    aclState.dirty = false;
+    $('acl-save').disabled = true;
+    aclRenderTree();
+    if (!$('acl-perms-panel').hidden) aclRenderPerms();
+    if (force) msg.textContent = '';
   } catch (e) {
     msg.textContent = 'Ошибка: ' + e.message;
   }
-}
-
-function renderAcl(data) {
-  const users = data.users || [];
-  $('acl-head').innerHTML = '<tr><th>Папка</th><th>Шара</th><th>Вкл</th>' +
-    users.map((u) => `<th>${u}</th>`).join('') + '<th></th></tr>';
-
-  const body = $('acl-body');
-  body.innerHTML = '';
-  const folders = data.folders || [];
-  if (!folders.length) {
-    body.innerHTML = `<tr><td colspan="${users.length + 4}" class="hint">Правил пока нет — нажмите «Добавить папку», укажите путь внутри шары и выдайте доступ пользователям.</td></tr>`;
-  }
-  folders.forEach((f) => body.appendChild(aclRow(f, users, data.matrix && data.matrix[f.id])));
-}
-
-function aclRow(f, users, matrix) {
-  const tr = document.createElement('tr');
-  tr.dataset.id = f.id || '';
-  const access = (u) => {
-    if (!f || !f.rules) return '';
-    const r = (f.rules || []).find((x) => (x.user || '').toLowerCase() === u.toLowerCase());
-    if (!r) return '';
-    return r.access + (r.inherit ? '' : '!');
-  };
-  const eff = (u) => (matrix && matrix[u]) || '';
-  const cells = users.map((u) => {
-    const s = aclSelect(access(u), u);
-    const title = eff(u) ? `действует: ${eff(u)}` : 'доступа нет';
-    return `<td>${s.replace('<select ', `<select title="${title}" `)}</td>`;
-  }).join('');
-
-  tr.innerHTML = `
-    <td><input class="a-path" value="${f.path || ''}" placeholder="proxmox" autocomplete="off" size="14"></td>
-    <td><input class="a-name" value="${f.name || ''}" placeholder="авто" autocomplete="off" size="10"></td>
-    <td><input class="a-en" type="checkbox" ${f.enabled !== false ? 'checked' : ''}></td>
-    ${cells}
-    <td><button class="icon-btn" aria-label="Удалить папку" title="Удалить папку">✕</button></td>`;
-  tr.querySelector('.icon-btn').onclick = () => {
-    if (confirm('Удалить правило для этой папки?')) tr.remove();
-  };
-  return tr;
-}
-
-function collectAcl() {
-  return [...document.querySelectorAll('#acl-body tr')].filter((tr) => tr.querySelector('.a-path')).map((tr) => {
-    const path = tr.querySelector('.a-path').value.trim().replace(/^\/+|\/+$/g, '');
-    const rules = [...tr.querySelectorAll('.a-cell')].map((sel) => {
-      let v = sel.value;
-      if (!v) return null;
-      const inherit = !v.endsWith('!');
-      return { user: sel.dataset.user, access: v.replace('!', ''), inherit };
-    }).filter(Boolean);
-    return {
-      id: tr.dataset.id,
-      path,
-      name: tr.querySelector('.a-name').value.trim(),
-      enabled: tr.querySelector('.a-en').checked,
-      rules,
-    };
-  });
 }
 
 async function loadLogs() {  try {

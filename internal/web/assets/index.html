@@ -123,16 +123,46 @@
     </section>
 
     <section class="view" id="view-acl">
-      <article class="card wide">
-        <h3>Права на папки</h3>
-        <p class="hint">Для каждой папки внутри шары можно задать доступ пользователям: запрещён, чтение или чтение и запись. Правило с галочкой «Наследовать» применяется и к вложенным папкам, пока там нет своего правила.</p>
-        <div class="tablewrap"><table class="tbl"><thead id="acl-head"></thead><tbody id="acl-body"></tbody></table></div>
-        <div class="row">
-          <button class="btn" id="acl-add">Добавить папку</button>
-          <button class="btn ghost" id="acl-save">Сохранить правила</button>
+      <div class="kdialog">
+        <div class="kdialog-head">
+          <h2>Файлы и папки</h2>
+          <span class="kdialog-share" id="acl-share">—</span>
         </div>
-        <p class="hint" id="acl-msg" aria-live="polite"></p>
-      </article>
+        <div class="kdialog-body">
+          <div class="kfm">
+            <div class="kfm-controls">
+              <button class="kbtn" id="acl-mkdir" title="Создать папку в выделенной папке." aria-label="Создать папку">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.1l2 2.2h7.9A2.5 2.5 0 0 1 21 9.7v7.8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><path d="M12 11.6v4.4M9.8 13.8h4.4"/></svg>
+              </button>
+              <button class="kbtn" id="acl-perms" title="Настройка прав доступа" aria-label="Настройка прав доступа" disabled>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="14.5" r="3.6"/><path d="M10.7 11.9 18.5 4M15.6 6.9l2.4 2.4M13.2 9.3l2.4 2.4"/></svg>
+              </button>
+              <button class="kbtn" id="acl-refresh" title="Обновить список" aria-label="Обновить список">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5A8 8 0 1 0 18.4 16"/><path d="M20 4.5v7h-7"/></svg>
+              </button>
+            </div>
+            <div class="kfm-body">
+              <div class="kfm-list">
+                <div class="kfm-headers">
+                  <div class="kfm-h-folder">Папка</div>
+                  <div class="kfm-h-size">Размер</div>
+                </div>
+                <div class="kfm-tree" id="acl-tree" role="tree" aria-label="Папки шары"></div>
+              </div>
+              <div class="kfm-perms" id="acl-perms-panel" hidden>
+                <div class="kfm-headers">
+                  <div class="kfm-h-folder">Права доступа к выбранной папке</div>
+                </div>
+                <div class="kfm-perms-form" id="acl-users"></div>
+              </div>
+            </div>
+            <div class="kfm-foot">
+              <span class="kfm-msg" id="acl-msg" aria-live="polite"></span>
+              <button class="btn primary" id="acl-save" disabled>Сохранить</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="view" id="view-stats">

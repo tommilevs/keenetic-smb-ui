@@ -46,6 +46,7 @@ func New(cfg *config.Config) (*Server, error) {
 		stats:    stats.New(cfg.Stats.HistoryLen, paths),
 		sessions: newSessions(),
 	}
+	startSizeWorker()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/login", s.handleLogin)
 	mux.HandleFunc("/api/logout", s.handleLogout)
@@ -59,6 +60,9 @@ func New(cfg *config.Config) (*Server, error) {
 	mux.HandleFunc("/api/remotes/status", s.auth(s.handleRemoteStatus))
 	mux.HandleFunc("/api/users", s.auth(s.handleUsers))
 	mux.HandleFunc("/api/folders", s.auth(s.handleFolders))
+	mux.HandleFunc("/api/fs", s.auth(s.handleFS))
+	mux.HandleFunc("/api/fs/size", s.auth(s.handleFSSize))
+	mux.HandleFunc("/api/fs/mkdir", s.auth(s.handleFSMkdir))
 	mux.HandleFunc("/api/ndms/users", s.auth(s.handleNDMSUsers))
 	mux.HandleFunc("/api/logs", s.auth(s.handleLogs))
 	mux.HandleFunc("/api/update", s.auth(s.handleUpdate))

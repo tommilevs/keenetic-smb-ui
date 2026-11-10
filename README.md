@@ -186,18 +186,29 @@ options the app uses and a troubleshooting table:
 
 ## Folder permissions
 
-Besides the per-account flag, the panel has a Keenetic-style ACL matrix
-(**Folder access**): every folder inside the aggregated tree can be published as its
-own SMB share with its own user list.
+**Folder access** is a «Files and folders» dialog that mirrors the Keenetic web
+configurator (NDMS 5.x, dark theme): 28 px title, 40×40 toolbar, `#2F3745` table
+header, 55 px rows, `#2E3D57` active row.
 
-- Access levels per user: **denied**, **read**, **read + write**, or no rule
-  (`— inherits`).
-- A rule with inheritance enabled applies to subfolders until a subfolder defines its
-  own rule; the `only here` variants restrict a rule to one folder.
+- Left: a tree of the real share folders with per-level expansion, icons and sizes.
+  Sizes are computed recursively for local disks; network CIFS disks show `—` so a
+  recursive walk over 24 TB never hammers the Proxmox hosts.
+- Right: «Permissions for the selected folder» — for every NDMS user a choice of
+  **read + write**, **read only** or **denied**. A rule applies to subfolders until
+  they define their own rule (Keenetic-style inheritance).
+- «Create folder» makes a directory inside the selected folder, «Refresh» reloads
+  the tree, «Save» applies the ACLs and restarts Samba.
+
+Folder ACLs also publish each protected folder as its own SMB share with its own
+user list.
+
+- Access levels per user: **denied**, **read**, **read + write**.
+- A rule applies to subfolders until a subfolder defines its own rule.
 - Two users on the same folder: `admin` = read + write, `vms` = read → `admin` can
   copy files in, `vms` can only browse. Verified on a live Samba instance.
-- When ACLs exist, the aggregate `all` share is limited to users who may read the
-  root; everyone else connects directly to their folder share
+- The aggregate `all` share gets `read only = yes` plus a `write list` derived from
+  the root folder ACL: users without write rights can browse but not modify the
+  tree. Other users connect directly to their folder share
   (`\\<smb-ip>\disk-c`, `\\<smb-ip>\snippets`, …).
 - Enforcement is pure Samba: generated sections use `read only = yes` plus an
   explicit `write list`, so no filesystem ACLs or xattrs are required on top of
