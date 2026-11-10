@@ -180,6 +180,9 @@ func (s *Server) handleService(w http.ResponseWriter, r *http.Request) {
 			msgs["ip"] = "assigned " + s.cfg.SMB.ListenIP
 		}
 		if err == nil {
+			err = s.smb.WriteConfig()
+		}
+		if err == nil {
 			err = s.smb.SyncUsers()
 		}
 		if err == nil {
@@ -188,7 +191,10 @@ func (s *Server) handleService(w http.ResponseWriter, r *http.Request) {
 	case "stop":
 		err = s.smb.Stop()
 	case "restart":
-		err = s.smb.SyncUsers()
+		err = s.smb.WriteConfig()
+		if err == nil {
+			err = s.smb.SyncUsers()
+		}
 		if err == nil {
 			_, _ = s.smb.EnsureBindIP()
 			err = s.smb.Restart()

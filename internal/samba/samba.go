@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/tommilevs/keenetic-smb-ui/internal/config"
 )
@@ -49,7 +50,7 @@ func Render(cfg *config.Config) string {
 	fmt.Fprintf(&b, "   server max protocol = %s\n", orDefault(s.MaxProtocol, "SMB3_11"))
 	fmt.Fprintf(&b, "   interfaces = %s\n", s.ListenIP)
 	fmt.Fprintf(&b, "   bind interfaces only = yes\n")
-	fmt.Fprintf(&b, "   smb ports = 445 139\n")
+	fmt.Fprintf(&b, "   smb ports = 445\n")
 	fmt.Fprintf(&b, "   log file = /opt/var/keenetic-smb-ui/log/samba.log\n")
 	fmt.Fprintf(&b, "   max log size = 1024\n")
 	fmt.Fprintf(&b, "   load printers = no\n")
@@ -57,7 +58,7 @@ func Render(cfg *config.Config) string {
 	fmt.Fprintf(&b, "   disable spoolss = yes\n")
 	fmt.Fprintf(&b, "   dns proxy = no\n")
 	fmt.Fprintf(&b, "   unix charset = UTF-8\n")
-	fmt.Fprintf(&b, "   dos charset = UTF-8\n")
+	fmt.Fprintf(&b, "   unix extensions = no\n")
 	fmt.Fprintf(&b, "   server signing = auto\n")
 	fmt.Fprintf(&b, "   server multi channel support = yes\n")
 	fmt.Fprintf(&b, "   strict allocate = no\n")
@@ -68,7 +69,7 @@ func Render(cfg *config.Config) string {
 	fmt.Fprintf(&b, "   cache directory = /opt/var/keenetic-smb-ui/cache\n")
 	fmt.Fprintf(&b, "   lock directory = /opt/var/keenetic-smb-ui/lock\n")
 	fmt.Fprintf(&b, "   pid directory = %s\n", orDefault(cfg.Paths.SambaPidDir, "/opt/var/keenetic-smb-ui/run"))
-	fmt.Fprintf(&b, "   private dir = /opt/etc/keenetic-smb-ui/private\n")
+	fmt.Fprintf(&b, "   private dir = /opt/etc/samba/private\n")
 	for _, opt := range s.ExtraOptions {
 		if strings.TrimSpace(opt) == "" {
 			continue
@@ -83,7 +84,6 @@ func Render(cfg *config.Config) string {
 	fmt.Fprintf(&b, "   guest ok = %s\n", yesNo(cfg.SMB.GuestOK))
 	fmt.Fprintf(&b, "   follow symlinks = yes\n")
 	fmt.Fprintf(&b, "   wide links = yes\n")
-	fmt.Fprintf(&b, "   unix extensions = no\n")
 	fmt.Fprintf(&b, "   create mask = 0664\n")
 	fmt.Fprintf(&b, "   directory mask = 0775\n")
 	users := enabledUsers(cfg)
@@ -137,9 +137,14 @@ func (m *Manager) WriteConfig() error {
 		"/opt/var/keenetic-smb-ui/state",
 		"/opt/var/keenetic-smb-ui/cache",
 		"/opt/var/keenetic-smb-ui/lock",
+		"/opt/var/run/samba",
+		"/opt/var/run/samba/ncalrpc",
+		"/opt/var/lock/samba",
+		"/opt/var/log/samba",
 		m.cfg.Paths.SambaPidDir,
-		"/opt/etc/keenetic-smb-ui/private",
+		"/opt/etc/samba/private",
 		"/opt/var/keenetic-smb-ui/log",
+		orDefault(m.cfg.SMB.SharePath, "/opt/var/keenetic-smb-ui/share"),
 	} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			return err
@@ -150,11 +155,21 @@ func (m *Manager) WriteConfig() error {
 
 // SyncUsers creates/updates Samba users from the config.
 func (m *Manager) SyncUsers() error {
+	conf := m.cfg.Paths.SambaConf
+	if conf == "" {
+		conf = "/opt/etc/keenetic-smb-ui/smb.conf"
+	}
 	for _, u := range m.cfg.SMB.Users {
 		if u.Name == "" || !u.Enabled || u.Password == "" {
 			continue
 		}
-		cmd := exec.Command("smbpasswd", "-a", "-s", u.Name)
+		// Samba needs a matching unix account for tdbsam entries on Entware.
+		if exec.Command("id", "-u", u.Name).Run() != nil {
+			if out, err := exec.Command("adduser", "-D", "-H", "-s", "/bin/false", u.Name).CombinedOutput(); err != nil {
+				return fmt.Errorf("adduser %s: %v: %s", u.Name, err, strings.TrimSpace(string(out)))
+			}
+		}
+		cmd := exec.Command("smbpasswd", "-c", conf, "-a", "-s", u.Name)
 		cmd.Stdin = bytes.NewBufferString(u.Password + "\n" + u.Password + "\n")
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("smbpasswd %s: %v: %s", u.Name, err, strings.TrimSpace(string(out)))
@@ -168,6 +183,7 @@ func (m *Manager) Start() error {
 	if m.running() {
 		return nil
 	}
+	_ = os.Remove(filepath.Join(m.cfg.Paths.SambaPidDir, "smbd.pid"))
 	if err := m.WriteConfig(); err != nil {
 		return err
 	}
@@ -176,7 +192,13 @@ func (m *Manager) Start() error {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("smbd start: %v: %s", err, strings.TrimSpace(string(out)))
 	}
-	return nil
+	for i := 0; i < 50; i++ {
+		if m.running() {
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return fmt.Errorf("smbd did not start (see %s)", "/opt/var/keenetic-smb-ui/log/samba.log")
 }
 
 // Stop terminates the managed smbd (pid file of the private instance).
@@ -188,9 +210,19 @@ func (m *Manager) Stop() error {
 	}
 	pid := strings.TrimSpace(string(data))
 	if pid == "" {
+		_ = os.Remove(pidFile)
 		return nil
 	}
-	return exec.Command("kill", "-TERM", pid).Run()
+	_ = exec.Command("kill", "-TERM", pid).Run()
+	// wait for the process to disappear so Start() cannot see a zombie pid
+	for i := 0; i < 50; i++ {
+		if exec.Command("kill", "-0", pid).Run() != nil {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	_ = os.Remove(pidFile)
+	return nil
 }
 
 // Restart stops and starts the managed instance.

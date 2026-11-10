@@ -52,6 +52,9 @@ func (m *Manager) Apply() []error {
 	defer m.mu.Unlock()
 
 	var errs []error
+	if err := ensureCIFS(); err != nil {
+		errs = append(errs, err)
+	}
 	root := m.Root()
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return []error{err}
@@ -128,26 +131,31 @@ func (m *Manager) Statuses() []Status {
 }
 
 func mountRemote(r config.Remote, mp string) error {
+	// Keenetic kernels (4.9-ndm) ship a cifs client limited to SMB 2.0/2.1,
+	// so 2.1 is the default; Options can override it explicitly.
 	opts := []string{
-		"rw", "vers=3.1.1", "username=" + r.User, "password=" + r.Password,
+		"vers=2.1", "username=" + r.User, "password=" + r.Password,
 		"uid=0", "gid=0", "file_mode=0775", "dir_mode=0775", "iocharset=utf8",
-		"nounix", "serverino", "actimeo=10", "retrans=3", "nomapposix",
+		"nounix", "serverino", "actimeo=10", "nomapposix",
 	}
 	if r.ReadOnly {
-		opts[0] = "ro"
+		opts = append(opts, "ro")
 	}
-	if strings.TrimSpace(r.Options) != "" {
-		opts = append(opts, strings.Split(r.Options, ",")...)
+	if extra := strings.TrimSpace(r.Options); extra != "" {
+		parts := strings.Split(extra, ",")
+		for _, p := range parts {
+			if strings.HasPrefix(p, "vers=") {
+				opts[0] = p
+				continue
+			}
+			opts = append(opts, p)
+		}
 	}
 	target := "//" + r.Host + "/" + strings.TrimPrefix(r.Share, "/")
 	if r.SubPath != "" {
 		target += "/" + strings.TrimPrefix(r.SubPath, "/")
 	}
-	args := []string{"-t", "cifs", target, mp, "-o", strings.Join(opts, ",")}
-	if out, err := exec.Command("mount", args...).CombinedOutput(); err != nil {
-		return fmt.Errorf("mount %s: %v: %s", target, err, strings.TrimSpace(string(out)))
-	}
-	return nil
+	return platformMount(target, mp, strings.Join(opts, ","))
 }
 
 // isMounted parses /proc/mounts to avoid depending on mountpoint(1).
