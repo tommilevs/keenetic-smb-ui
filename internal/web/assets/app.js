@@ -314,6 +314,7 @@ async function startApp() {
     const panel = $('acl-perms-panel');
     panel.hidden = !panel.hidden;
     $('acl-perms').classList.toggle('kbtn--active', !panel.hidden);
+    aclSyncPanel();
     if (!panel.hidden) aclRenderPerms();
   };
   $('acl-refresh').onclick = async () => {
@@ -586,6 +587,12 @@ async function aclRequestSize(p, el) {
   }
 }
 
+function aclSyncPanel() {
+  const body = document.querySelector('#view-acl .kfm-body');
+  const panel = $('acl-perms-panel');
+  if (body && panel) body.classList.toggle('kfm-body--perms', !panel.hidden);
+}
+
 function aclSelectPath(p) {
   aclState.selected = p;
   $('acl-perms').disabled = false;
@@ -649,6 +656,7 @@ async function loadAcl(force) {
     $('acl-save').disabled = true;
     aclRenderTree();
     if (!$('acl-perms-panel').hidden) aclRenderPerms();
+    aclSyncPanel();
     if (force) msg.textContent = '';
   } catch (e) {
     msg.textContent = 'Ошибка: ' + e.message;

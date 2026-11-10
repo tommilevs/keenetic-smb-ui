@@ -4,6 +4,12 @@ All notable changes are documented here. Versions follow `MAJOR.MINOR.PATCH`;
 every release publishes `.ipk` packages for all supported Entware architectures plus
 `Packages` / `Packages.gz` for use as an opkg feed.
 
+## 1.4.1 — выравнивание дерева папок
+
+- Длинные имена папок обрезаются многоточием и больше не заезжают под панель
+  прав: при открытой панели список сжимается ровно на её ширину (384 px).
+- Колонка «Размер» остаётся видимой рядом с панелью.
+
 ## 1.4.0 — «Файлы и папки» как в Keenetic
 
 - Раздел «Доступ к папкам» переделан в диалог «Файлы и папки» по образцу
