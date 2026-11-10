@@ -1,6 +1,7 @@
 Package: keenetic-smb-ui
 Version: __VERSION__
-Depends: libc, samba4-server, samba4-client, cifs-utils
+Depends: libc, samba4-server, samba4-client
+Recommends: cifs-utils
 Source: https://github.com/tommilevs/keenetic-smb-ui
 SourceName: keenetic-smb-ui
 License: AGPL-3.0-or-later
@@ -8,7 +9,7 @@ Section: net
 URL: https://github.com/tommilevs/keenetic-smb-ui
 Maintainer: tommilevs <https://github.com/tommilevs>
 Architecture: __ARCH__
-Installed-Size: 7200
+Installed-Size: __SIZE__
 Description: SMB server manager with a web UI for Keenetic/Entware routers.
  Runs a private Samba instance bound to a dedicated IP, aggregates external
  SMB shares and local disks into one share, and exposes configuration,

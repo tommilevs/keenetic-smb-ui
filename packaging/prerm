@@ -1,0 +1,5 @@
+#!/bin/sh
+# prerm: stop the service before removing/replacing files.
+set -e
+/opt/etc/init.d/S99keenetic-smb-ui stop >/dev/null 2>&1 || true
+exit 0

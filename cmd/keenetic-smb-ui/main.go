@@ -17,7 +17,7 @@ import (
 	"github.com/tommilevs/keenetic-smb-ui/internal/web"
 )
 
-var version = "dev"
+var version = web.Version
 
 func main() {
 	var (

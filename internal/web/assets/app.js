@@ -286,6 +286,25 @@ async function startApp() {
     try { await saveConfig(); await api('/api/remotes/apply', { method: 'POST' }); refresh(); }
     catch (e) { $('cfg-msg').textContent = 'Ошибка: ' + e.message; }
   };
+  $('upd-check').onclick = async () => {
+    const i = await api('/api/update');
+    $('upd-current').textContent = i.current || '—';
+    $('upd-msg').textContent = i.error
+      ? 'Ошибка: ' + i.error
+      : i.newer
+        ? `Доступна ${i.latest} (сейчас ${i.current}) — нажмите «Установить»`
+        : `Обновлений нет (последняя ${i.latest || i.current})`;
+  };
+  $('upd-install').onclick = async () => {
+    $('upd-msg').textContent = 'Установка…';
+    const r = await api('/api/update', { method: 'POST' });
+    $('upd-msg').textContent = r.status === 'installing'
+      ? 'Устанавливается, страница перезагрузится через 20 секунд…'
+      : r.status === 'uptodate'
+        ? 'Обновлений нет'
+        : 'Ошибка: ' + (r.error || 'неизвестно');
+    if (r.status === 'installing') setTimeout(() => location.reload(), 20000);
+  };
   for (const [id, action] of [['smb-start', 'start'], ['smb-stop', 'stop'], ['smb-restart', 'restart']]) {
     $(id).onclick = async () => {
       const r = await api(`/api/service?action=${action}`, { method: 'POST' });
