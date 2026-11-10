@@ -19,13 +19,13 @@
 
 ## Why
 
-Keenetic's built-in SMB server owns `192.168.165.1:445`. It cannot serve aggregated
+Keenetic's built-in SMB server owns `10.30.0.1:445`. It cannot serve aggregated
 storage, cannot be moved to another IP, and cannot export Proxmox disks. This project
 adds a **second, independent SMB server** that co-exists with the native one:
 
 ```
-native NDMS SMB   192.168.165.1:445   (untouched)
-keenetic-smb-ui   192.168.160.2:445   (this app, Samba 4.24 from Entware)
+native NDMS SMB   10.30.0.1:445   (untouched)
+keenetic-smb-ui   10.30.0.2:445   (this app, Samba 4.24 from Entware)
 ```
 
 Both run at the same time. The app manages its own `smbd`, its own `smb.conf`, its own
@@ -36,7 +36,8 @@ pid/state/private directories — the router's SMB keeps working exactly as befo
 - **Private Samba instance** managed by the app: separate config, pid, state and
   passdb, so nothing collides with the NDMS server.
 - **Dedicated IP and interface**: bind SMB to any address on any bridge
-  (`192.168.160.2` + `br0` by default); the app assigns the `/32` alias itself.
+  (example: `10.30.0.2` on `br0`); the app assigns the `/32` alias itself. Address and
+  interface are changed in **SMB server** settings.
 - **Aggregated share**: mount any number of remote SMB shares (Proxmox disks) and
   local router USB disks into one tree exported as `\\IP\all`.
 - **Per-disk switches**: add, edit, enable/disable and mark each remote read-only
@@ -56,17 +57,17 @@ pid/state/private directories — the router's SMB keeps working exactly as befo
 ```
               ┌──────────────────────── router (Entware) ──────────────────────────┐
               │                                                                    │
-192.168.160.2 │  keenetic-smb-ui (Go, static)                                      │
+10.30.0.2 │  keenetic-smb-ui (Go, static)                                      │
      :445     │    ├── smbd ────────────────► /opt/var/keenetic-smb-ui/share       │
  ─────────────┼──► │                                                               │
-              │    ├── mounts:  //192.168.165.200/hddshare24tb-2 (cifs, SMB 2.1)   │
-              │    │            //192.168.165.250/hdd24tb-2       (ro)             │
-              │    │            //192.168.165.100/hddshare5tb-1   (rw)             │
+              │    ├── mounts:  //10.20.0.11/hddshare24tb-a (cifs, SMB 2.1)   │
+              │    │            //10.20.0.12/hdd24tb-b       (ro)             │
+              │    │            //10.20.0.13/hddshare5tb-c   (rw)             │
               │    │                                                               │
      :8099    │    └── web UI (embedded assets, cookie auth, JSON API)              │
  ◄────────────┼──                                                                   │
               │                                                                    │
-192.168.165.1 │  native NDMS SMB (445) — untouched                                 │
+10.30.0.1 │  native NDMS SMB (445) — untouched                                 │
               └────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -135,13 +136,13 @@ Any SMB share reachable from the router can be mounted into the exported tree:
 
 | Field | Example |
 |---|---|
-| name | `proxmox-200-24tb` |
-| host | `192.168.165.200` |
-| share | `hddshare24tb-2` |
+| name | `hddshare24tb-a` |
+| host | `10.20.0.11` |
+| share | `hddshare24tb-a` |
 | user / password | `admin` / `****` |
 | read only | off / on |
 
-The mount appears as `\\<smb-ip>\all\proxmox-200-24tb`. Local router disks from
+The mount appears as `\\<smb-ip>\all\hddshare24tb-a`. Local router disks from
 `/tmp/mnt/*` are linked automatically as `local-<uuid>`.
 
 **Read-only for foreign shares.** Proxmox hosts often expose disks where a plain
@@ -207,7 +208,7 @@ The panel talks to the GitHub Releases API directly:
   "web": { "listen": "0.0.0.0:8099", "user": "admin", "password": "…", "readonly": false },
   "smb": {
     "enabled": true,
-    "listen_ip": "192.168.160.2",
+    "listen_ip": "10.30.0.2",
     "bind_device": "br0",
     "workgroup": "WORKGROUP",
     "server_string": "keenetic-smb-ui",
@@ -223,8 +224,8 @@ The panel talks to the GitHub Releases API directly:
     "extra_options": []
   },
   "remotes": [
-    { "id": "pve200", "name": "proxmox-200-24tb", "host": "192.168.165.200",
-      "share": "hddshare24tb-2", "user": "admin", "password": "…",
+    { "id": "nas-a", "name": "hddshare24tb-a", "host": "10.20.0.11",
+      "share": "hddshare24tb-a", "user": "admin", "password": "…",
       "enabled": true, "readonly": true }
   ],
   "stats": { "interval_sec": 5, "history_len": 120 }
