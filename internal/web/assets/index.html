@@ -104,8 +104,9 @@
       <article class="card wide">
         <h3>Общие диски Proxmox</h3>
         <p class="hint">Подключаются в агрегированную шару. Пароли хранятся в конфиге на роутере.</p>
-        <div class="tablewrap"><table class="tbl"><thead><tr><th>Имя</th><th>Хост</th><th>Шара</th><th>Логин</th><th>Пароль</th><th>Вкл</th><th>RO</th><th>Статус</th><th></th></tr></thead><tbody id="remotes"></tbody></table></div>
+        <div class="tablewrap"><table class="tbl"><thead><tr><th>Имя</th><th>Хост</th><th>Шара</th><th>Подкаталог</th><th>Логин</th><th>Пароль</th><th>Вкл</th><th>RO</th><th>Статус</th><th></th></tr></thead><tbody id="remotes"></tbody></table></div>
         <div class="row"><button class="btn" id="remote-add">Добавить диск</button><button class="btn ghost" id="remotes-save">Сохранить список</button></div>
+        <p class="hint">Подкаталог — необязательный путь внутри шары (как «Подкаталог» при добавлении SMB-хранилища в Proxmox), например <code>proxmox</code> или <code>storage/llama/models</code>.</p>
       </article>
     </section>
 

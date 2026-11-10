@@ -65,10 +65,16 @@ Open the panel, go to **Disks → Add disk** and fill the row:
 | name | `hddshare24tb-a` | folder name inside `\\<smb-ip>\all` |
 | host | `10.20.0.11` | Proxmox host with SMB |
 | share | `hddshare24tb-a` | SMB share name (no leading slash) |
+| **subpath** | `proxmox` | optional folder inside the share — mount only it, not the whole share |
 | user | `svc-smb` | SMB account on that host |
 | password | `••••••` | its password |
 | enabled | on | mount on apply |
 | RO | on/off | mount read-only |
+
+`subpath` works like Proxmox's own **Subdirectory / Подкаталог** field when you add
+SMB/CIFS storage: the app mounts `//host/share/sub/path` (kernel `prefixpath`) and
+publishes that directory as its own folder. Examples: `proxmox` (VM images, ISOs and
+dumps) or `storage/llama/models` (only the models directory, not the rest of the disk).
 
 Repeat for every host, then press **Save list** and **Apply** (the top-right button).
 The panel rewrites `smb.conf`, remounts enabled disks and restarts the managed

@@ -162,6 +162,7 @@ function rowRemote(r = {}) {
     <td><input class="f-name" value="${r.name || ''}" placeholder="proxmox-24tb" autocomplete="off"></td>
     <td><input class="f-host" value="${r.host || ''}" placeholder="192.168.165.200" autocomplete="off" inputmode="decimal"></td>
     <td><input class="f-share" value="${r.share || ''}" placeholder="hddshare24tb-2" autocomplete="off"></td>
+    <td><input class="f-sub" value="${r.subpath || ''}" placeholder="/путь/к_ресурсу" autocomplete="off" title="Подкаталог внутри шары (необязательно)"></td>
     <td><input class="f-user" value="${r.user || ''}" placeholder="admin" autocomplete="off" spellcheck="false"></td>
     <td><input class="f-pass" type="password" placeholder="пароль" autocomplete="new-password"></td>
     <td><input class="f-en" type="checkbox" ${r.enabled !== false ? 'checked' : ''}></td>
@@ -180,6 +181,7 @@ function collectRemotes() {
     name: tr.querySelector('.f-name').value.trim(),
     host: tr.querySelector('.f-host').value.trim(),
     share: tr.querySelector('.f-share').value.trim(),
+    subpath: tr.querySelector('.f-sub').value.trim().replace(/^\/+|\/+$/g, ''),
     user: tr.querySelector('.f-user').value.trim(),
     password: tr.querySelector('.f-pass').value,
     enabled: tr.querySelector('.f-en').checked,

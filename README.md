@@ -139,11 +139,17 @@ Any SMB share reachable from the router can be mounted into the exported tree:
 | name | `hddshare24tb-a` |
 | host | `10.20.0.11` |
 | share | `hddshare24tb-a` |
+| subpath (optional) | `proxmox` |
 | user / password | `admin` / `****` |
 | read only | off / on |
 
 The mount appears as `\\<smb-ip>\all\hddshare24tb-a`. Local router disks from
 `/tmp/mnt/*` are linked automatically as `local-<uuid>`.
+
+`subpath` mounts only a folder inside the share — the same idea as Proxmox's
+**Subdirectory** field for SMB/CIFS storage. Use it to publish, for example, only
+`proxmox` (VM images, ISOs, dumps) or only `storage/llama/models` instead of the whole
+disk.
 
 **Read-only for foreign shares.** Proxmox hosts often expose disks where a plain
 Samba user cannot write; mark those rows read-only and the app mounts them `ro`, so
