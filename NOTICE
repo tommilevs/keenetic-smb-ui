@@ -1,0 +1,31 @@
+keenetic-smb-ui
+================
+
+Copyright (c) 2026 tommilevs — https://github.com/tommilevs/keenetic-smb-ui
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version — see LICENSE.
+
+ATTRIBUTION REQUIREMENT
+-----------------------
+If you copy, fork, modify, distribute or operate this software as a network
+service, you MUST keep visible attribution to the original author and a link to
+the original repository:
+
+    Based on keenetic-smb-ui by tommilevs
+    https://github.com/tommilevs/keenetic-smb-ui
+
+You may not remove or hide this attribution from the web interface, the binary
+help output, the package metadata or any documentation that ships with a
+derivative work. Section 7(b) of the AGPL-3.0 ("preserving copyright and
+attribution notices") is enforced as a condition of the license grant for this
+project.
+
+Third-party components
+----------------------
+- Samba (samba4-server / samba4-client) — GPL-3.0-or-later, installed from the
+  Entware feed as a runtime dependency; not bundled with this package.
+- cifs-utils — GPL-2.0-or-later, runtime dependency from Entware.
+- Go standard library — BSD-3-Clause, statically linked at build time.

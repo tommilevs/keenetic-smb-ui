@@ -1,0 +1,29 @@
+{
+  "web": {
+    "listen": "0.0.0.0:8099",
+    "user": "admin",
+    "password": "lip368lip",
+    "readonly": false
+  },
+  "smb": {
+    "enabled": true,
+    "listen_ip": "192.168.160.2",
+    "bind_device": "br0",
+    "workgroup": "WORKGROUP",
+    "server_string": "keenetic-smb-ui",
+    "share_name": "all",
+    "share_path": "/opt/var/keenetic-smb-ui/share",
+    "min_protocol": "SMB2",
+    "max_protocol": "SMB3_11",
+    "users": [
+      { "name": "admin", "password": "lip368lip", "readonly": false, "enabled": true }
+    ],
+    "guest_ok": false
+  },
+  "remotes": [],
+  "stats": { "interval_sec": 5, "history_len": 120 },
+  "paths": {
+    "samba_conf": "/opt/etc/keenetic-smb-ui/smb.conf",
+    "samba_pid_dir": "/opt/var/keenetic-smb-ui/run"
+  }
+}

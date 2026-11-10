@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Keenetic SMB · панель</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div class="brand">
+      <span class="logo">▚</span>
+      <div><b>Keenetic SMB</b><small>Entware edition</small></div>
+    </div>
+    <nav>
+      <button class="nav active" data-view="overview">Обзор</button>
+      <button class="nav" data-view="smb">SMB-сервер</button>
+      <button class="nav" data-view="shares">Общие диски</button>
+      <button class="nav" data-view="users">Пользователи</button>
+      <button class="nav" data-view="stats">Статистика</button>
+      <button class="nav" data-view="logs">Логи</button>
+      <button class="nav" data-view="settings">Настройки</button>
+    </nav>
+    <div class="sidefoot">
+      <span id="ver">v—</span>
+      <span id="srvdot" class="dot"></span><span id="srvtext">…</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="top">
+      <h1 id="title">Обзор</h1>
+      <div class="top-actions">
+        <button class="btn ghost" id="btn-refresh">Обновить</button>
+        <button class="btn primary" id="btn-apply">Применить</button>
+      </div>
+    </header>
+
+    <section class="view active" id="view-overview">
+      <div class="cards">
+        <article class="card"><h3>SMB-сервер</h3><p class="big" id="ov-service">—</p><p class="hint" id="ov-ip">—</p></article>
+        <article class="card"><h3>Шара</h3><p class="big" id="ov-share">—</p><p class="hint" id="ov-root">—</p></article>
+        <article class="card"><h3>Сессии</h3><p class="big" id="ov-sessions">—</p><p class="hint">активных SMB-подключений</p></article>
+        <article class="card"><h3>Сеть</h3><p class="big" id="ov-net">—</p><p class="hint">входящий / исходящий</p></article>
+      </div>
+      <div class="cols">
+        <article class="card wide"><h3>Нагрузка</h3><svg id="chart-load" class="chart" viewBox="0 0 600 140" preserveAspectRatio="none"></svg></article>
+        <article class="card wide"><h3>Трафик, КБ/с</h3><svg id="chart-net" class="chart" viewBox="0 0 600 140" preserveAspectRatio="none"></svg></article>
+      </div>
+      <article class="card"><h3>Диски в шаре</h3><table class="tbl"><thead><tr><th>Точка</th><th>Использовано</th><th>Свободно</th><th></th></tr></thead><tbody id="ov-disks"></tbody></table></article>
+    </section>
+
+    <section class="view" id="view-smb">
+      <div class="cols">
+        <article class="card wide">
+          <h3>Параметры сервера</h3>
+          <div class="grid2">
+            <label>Слушать IP<input id="smb-ip"></label>
+            <label>Интерфейс<input id="smb-dev"></label>
+            <label>Рабочая группа<input id="smb-wg"></label>
+            <label>Имя сервера<input id="smb-name"></label>
+            <label>Имя шары<input id="smb-share"></label>
+            <label>Минимальный протокол<select id="smb-min"><option>SMB2</option><option>SMB2_10</option><option>SMB3</option><option>SMB3_02</option><option>SMB3_11</option></select></label>
+            <label>Максимальный протокол<select id="smb-max"><option>SMB2_10</option><option>SMB3</option><option>SMB3_02</option><option>SMB3_11</option></select></label>
+            <label class="check"><input type="checkbox" id="smb-enabled"> Сервер включён</label>
+            <label class="check"><input type="checkbox" id="smb-guest"> Гостевой доступ</label>
+          </div>
+          <div class="row">
+            <button class="btn" id="smb-start">Запустить</button>
+            <button class="btn" id="smb-stop">Остановить</button>
+            <button class="btn" id="smb-restart">Перезапустить</button>
+            <button class="btn ghost" id="smb-preview">Показать smb.conf</button>
+          </div>
+          <pre id="smb-conf" class="code hidden"></pre>
+        </article>
+      </div>
+    </section>
+
+    <section class="view" id="view-shares">
+      <article class="card wide">
+        <h3>Общие диски Proxmox</h3>
+        <p class="hint">Подключаются в агрегированную шару. Пароли хранятся в конфиге на роутере.</p>
+        <table class="tbl"><thead><tr><th>Имя</th><th>Хост</th><th>Шара</th><th>Логин</th><th>Вкл</th><th>Статус</th><th></th></tr></thead><tbody id="remotes"></tbody></table>
+        <div class="row"><button class="btn" id="remote-add">Добавить диск</button><button class="btn ghost" id="remotes-save">Сохранить список</button></div>
+      </article>
+    </section>
+
+    <section class="view" id="view-users">
+      <article class="card wide">
+        <h3>Пользователи SMB</h3>
+        <table class="tbl"><thead><tr><th>Логин</th><th>Пароль</th><th>Только чтение</th><th>Вкл</th><th></th></tr></thead><tbody id="users"></tbody></table>
+        <div class="row"><button class="btn" id="user-add">Добавить пользователя</button><button class="btn ghost" id="users-save">Сохранить</button></div>
+      </article>
+    </section>
+
+    <section class="view" id="view-stats">
+      <div class="cards">
+        <article class="card"><h3>Uptime</h3><p class="big" id="st-uptime">—</p></article>
+        <article class="card"><h3>Load average</h3><p class="big" id="st-load">—</p></article>
+        <article class="card"><h3>Память</h3><p class="big" id="st-mem">—</p><div class="bar"><i id="st-membar"></i></div></article>
+        <article class="card"><h3>Сессии</h3><p class="big" id="st-sessions">—</p></article>
+      </div>
+      <article class="card wide"><h3>История нагрузки</h3><svg id="chart-load2" class="chart" viewBox="0 0 600 180" preserveAspectRatio="none"></svg></article>
+    </section>
+
+    <section class="view" id="view-logs">
+      <article class="card wide"><h3>samba.log</h3><pre id="logs" class="code"></pre></article>
+    </section>
+
+    <section class="view" id="view-settings">
+      <div class="cols">
+        <article class="card wide">
+          <h3>Веб-интерфейс</h3>
+          <div class="grid2">
+            <label>Адрес прослушивания<input id="web-listen"></label>
+            <label>Логин<input id="web-user"></label>
+            <label>Пароль<input id="web-pass" type="password" placeholder="не менять"></label>
+            <label class="check"><input type="checkbox" id="web-ro"> Только чтение</label>
+          </div>
+        </article>
+        <article class="card wide">
+          <h3>Сбор статистики</h3>
+          <div class="grid2">
+            <label>Интервал, с<input id="st-interval" type="number" min="1"></label>
+            <label>Точек истории<input id="st-len" type="number" min="10"></label>
+          </div>
+        </article>
+      </div>
+      <article class="card wide">
+        <h3>Сохранить конфигурацию</h3>
+        <div class="row"><button class="btn primary" id="cfg-save">Сохранить всё</button></div>
+        <p class="hint" id="cfg-msg"></p>
+      </article>
+    </section>
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

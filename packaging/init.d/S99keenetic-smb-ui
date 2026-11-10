@@ -1,0 +1,12 @@
+#!/bin/sh
+# Entware init script for keenetic-smb-ui
+# Keeps the managed Samba instance separate from the router's native SMB.
+
+ENABLED=yes
+PROCS=keenetic-smb-ui
+ARGS="-config /opt/etc/keenetic-smb-ui/config.json -data /opt/var/keenetic-smb-ui"
+PREARGS=""
+DESC="Keenetic SMB UI service"
+PATH=/opt/sbin:/opt/bin:/opt/usr/sbin:/opt/usr/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+. /opt/etc/init.d/rc.func
