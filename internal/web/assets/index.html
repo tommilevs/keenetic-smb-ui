@@ -3,10 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0d1117">
 <title>Keenetic SMB · панель</title>
 <link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%234ea1ff%27/%3E%3Cpath d=%27M8 22V10h5l6 8v-8h5v12h-5l-6-8v8z%27 fill=%27%2306121f%27/%3E%3C/svg%3E">
 </head>
 <body>
+<a class="skip" href="#main">Перейти к содержимому</a>
 <div id="login" class="login-wrap hidden">
   <form id="login-form" class="login-card" autocomplete="on">
     <div class="brand login-brand">
@@ -16,13 +19,13 @@
     <label>Логин<input id="login-user" value="admin" autocomplete="username"></label>
     <label>Пароль<input id="login-pass" type="password" autocomplete="current-password"></label>
     <button class="btn primary" type="submit">Войти</button>
-    <p class="hint" id="login-msg"></p>
+    <p class="hint" id="login-msg" aria-live="polite"></p>
   </form>
 </div>
 <div class="shell">
   <aside class="side">
     <div class="brand">
-      <span class="logo">▚</span>
+      <span class="logo" aria-hidden="true">▚</span>
       <div><b>Keenetic SMB</b><small>Entware edition</small></div>
     </div>
     <nav>
@@ -41,7 +44,7 @@
     </div>
   </aside>
 
-  <main class="main">
+  <main class="main" id="main">
     <header class="top">
       <h1 id="title">Обзор</h1>
       <div class="top-actions">
@@ -113,7 +116,7 @@
         <div class="row"><button class="btn" id="user-add">Добавить пользователя</button>
           <button class="btn ghost" id="users-import" title="Прочитать пользователей из NDMS (ndmc)">Импорт из роутера</button>
           <button class="btn ghost" id="users-save">Сохранить</button></div>
-        <p class="hint" id="users-msg"></p>
+        <p class="hint" id="users-msg" aria-live="polite"></p>
       </article>
     </section>
 
@@ -156,12 +159,12 @@
           <button class="btn" id="upd-check">Проверить обновления</button>
           <button class="btn primary" id="upd-install">Установить</button>
         </div>
-        <p class="hint" id="upd-msg">Текущая версия: <span id="upd-current">—</span></p>
+        <p class="hint" id="upd-msg" aria-live="polite">Текущая версия: <span id="upd-current">—</span></p>
       </article>
       <article class="card wide">
         <h3>Сохранить конфигурацию</h3>
         <div class="row"><button class="btn primary" id="cfg-save">Сохранить всё</button></div>
-        <p class="hint" id="cfg-msg"></p>
+        <p class="hint" id="cfg-msg" aria-live="polite"></p>
       </article>
     </section>
   </main>

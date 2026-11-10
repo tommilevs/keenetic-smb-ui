@@ -159,16 +159,18 @@ function rowRemote(r = {}) {
   const tr = document.createElement('tr');
   tr.dataset.id = r.id || '';
   tr.innerHTML = `
-    <td><input class="f-name" value="${r.name || ''}" placeholder="proxmox-24tb"></td>
-    <td><input class="f-host" value="${r.host || ''}" placeholder="192.168.165.200"></td>
-    <td><input class="f-share" value="${r.share || ''}" placeholder="hddshare24tb-2"></td>
-    <td><input class="f-user" value="${r.user || ''}" placeholder="root"></td>
-    <td><input class="f-pass" type="password" placeholder="пароль"></td>
+    <td><input class="f-name" value="${r.name || ''}" placeholder="proxmox-24tb" autocomplete="off"></td>
+    <td><input class="f-host" value="${r.host || ''}" placeholder="192.168.165.200" autocomplete="off" inputmode="decimal"></td>
+    <td><input class="f-share" value="${r.share || ''}" placeholder="hddshare24tb-2" autocomplete="off"></td>
+    <td><input class="f-user" value="${r.user || ''}" placeholder="admin" autocomplete="off" spellcheck="false"></td>
+    <td><input class="f-pass" type="password" placeholder="пароль" autocomplete="new-password"></td>
     <td><input class="f-en" type="checkbox" ${r.enabled !== false ? 'checked' : ''}></td>
     <td><input class="f-ro" type="checkbox" ${r.readonly ? 'checked' : ''} title="только чтение"></td>
     <td class="status"><span class="pill">—</span></td>
-    <td><button class="icon-btn" title="удалить">✕</button></td>`;
-  tr.querySelector('.icon-btn').onclick = () => tr.remove();
+    <td><button class="icon-btn" aria-label="Удалить диск" title="Удалить диск">✕</button></td>`;
+  tr.querySelector('.icon-btn').onclick = () => {
+    if (confirm('Удалить диск из шары?')) tr.remove();
+  };
   return tr;
 }
 
@@ -189,12 +191,14 @@ function rowUser(u = {}) {
   const tr = document.createElement('tr');
   tr.dataset.id = u.name || '';
   tr.innerHTML = `
-    <td><input class="f-name" value="${u.name || ''}" placeholder="admin"></td>
-    <td><input class="f-pass" type="password" placeholder="без изменений"></td>
+    <td><input class="f-name" value="${u.name || ''}" placeholder="admin" autocomplete="off" spellcheck="false"></td>
+    <td><input class="f-pass" type="password" placeholder="без изменений" autocomplete="new-password"></td>
     <td><input class="f-ro" type="checkbox" ${u.readonly ? 'checked' : ''}></td>
     <td><input class="f-en" type="checkbox" ${u.enabled !== false ? 'checked' : ''}></td>
-    <td><button class="icon-btn" title="удалить">✕</button></td>`;
-  tr.querySelector('.icon-btn').onclick = () => tr.remove();
+    <td><button class="icon-btn" aria-label="Удалить пользователя" title="Удалить пользователя">✕</button></td>`;
+  tr.querySelector('.icon-btn').onclick = () => {
+    if (confirm('Удалить пользователя из списка?')) tr.remove();
+  };
   return tr;
 }
 
@@ -229,11 +233,17 @@ async function fillForms() {
   if (state.view === 'shares') {
     const body = $('remotes');
     body.innerHTML = '';
+    if (!(c.remotes || []).length) {
+      body.innerHTML = '<tr><td colspan="9" class="hint">Дисков пока нет — нажмите «Добавить диск», укажите хост, шару и логин.</td></tr>';
+    }
     (c.remotes || []).forEach((r) => body.appendChild(rowRemote(r)));
   }
   if (state.view === 'users') {
     const body = $('users');
     body.innerHTML = '';
+    if (!(c.smb.users || []).length) {
+      body.innerHTML = '<tr><td colspan="5" class="hint">Пользователей нет — добавьте вручную или импортируйте из роутера.</td></tr>';
+    }
     (c.smb.users || []).forEach((u) => body.appendChild(rowUser(u)));
   }
   if (state.view === 'settings') {
