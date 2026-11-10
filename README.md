@@ -6,7 +6,7 @@
 
 **English** · [Русский](README.ru.md)
 
-[Overview](#why) · [Features](#features) · [Install](#install) · [Web UI](#web-ui) · [Disks](#aggregated-disks) · [Users](#users) · [Updates](#updates) · [Configuration](#configuration) · [Releases](../../releases) · [Issues](../../issues)
+[Overview](#why) · [Features](#features) · [Install](#install) · [Web UI](#web-ui) · [Disks](#aggregated-disks) · [Proxmox example](#wiring-several-proxmox-hosts-worked-example) · [Users](#users) · [Updates](#updates) · [Configuration](#configuration) · [Releases](../../releases) · [Issues](../../issues)
 
 [![release](https://img.shields.io/github/v/release/tommilevs/keenetic-smb-ui?style=flat-square&label=release&color=4ea1ff)](../../releases)
 [![license](https://img.shields.io/badge/license-AGPL--3.0-3ddc97?style=flat-square)](LICENSE)
@@ -150,6 +150,31 @@ clients get a predictable answer instead of a broken write.
 
 The remote must speak SMB2.1 or lower (Keenetic's kernel CIFS client) and the
 credentials must be valid SMB accounts on the remote side.
+
+### Wiring several Proxmox hosts (worked example)
+
+The setup this project was built for aggregates three disks from three different
+Proxmox machines. Addresses below are placeholders — substitute your own:
+
+| Role | Host | Share | Account | Mode |
+|---|---|---|---|---|
+| 24 TB HDD on host A | `10.20.0.11` | `hddshare24tb-a` | `svc-smb` | read-only |
+| 24 TB USB disk on host B | `10.20.0.12` | `hdd24tb-b` | `svc-smb` | read-only |
+| 5 TB HDD on host C | `10.20.0.13` | `hddshare5tb-c` | `svc-smb` | read-write |
+
+Result on the router (`10.30.0.2` is the app's dedicated SMB address):
+
+```
+\\10.30.0.2\all
+├── hddshare24tb-a   → //10.20.0.11/hddshare24tb-a
+├── hdd24tb-b        → //10.20.0.12/hdd24tb-b
+├── hddshare5tb-c    → //10.20.0.13/hddshare5tb-c
+└── local-<uuid>     → router USB disks
+```
+
+Step-by-step instructions, the exact `smb.conf` snippet for the Proxmox side, mount
+options the app uses and a troubleshooting table:
+**[docs/proxmox-disks.md](docs/proxmox-disks.md)**
 
 ## Users
 
