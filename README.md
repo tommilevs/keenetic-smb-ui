@@ -54,3 +54,26 @@ AGPL-3.0-or-later с обязательной атрибуцией — см. `LI
 При копировании, форке или распространении (в том числе как сетевого сервиса)
 необходимо сохранить указание автора и ссылку на исходный репозиторий
 <https://github.com/tommilevs/keenetic-smb-ui>.
+## Установка из GitHub Releases
+
+```sh
+opkg update
+opkg install samba4-server samba4-client
+# busybox wget на роутере без TLS — качаем curl'ом и ставим локально
+curl -fsSL -O https://github.com/tommilevs/keenetic-smb-ui/releases/latest/download/keenetic-smb-ui_<version>_aarch64-3.10.ipk
+opkg install ./keenetic-smb-ui_<version>_aarch64-3.10.ipk
+```
+
+Либо подключить как фид (в релиз выкладывается `Packages`/`Packages.gz`):
+
+```sh
+echo "src/gz keenetic-smb-ui https://github.com/tommilevs/keenetic-smb-ui/releases/latest/download" >> /opt/etc/opkg.conf
+opkg update && opkg install keenetic-smb-ui
+```
+
+Обновление — из панели: «Настройки → Обновление → Проверить / Установить»
+(скачивает `.ipk` из последнего релиза, ставит через `opkg` и перезапускает службу).
+
+> CI-workflow лежит в `.github/workflows/release.yml`, но не добавлен в репозиторий:
+> текущий PAT без scope `workflow`. Добавьте файл через веб-интерфейс GitHub
+> или выпустите токен с `workflow` и запушьте его.
