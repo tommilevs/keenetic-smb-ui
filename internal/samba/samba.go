@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tommilevs/keenetic-smb-ui/internal/acl"
 	"github.com/tommilevs/keenetic-smb-ui/internal/config"
 )
 
@@ -94,9 +95,74 @@ func Render(cfg *config.Config) string {
 	fmt.Fprintf(&b, "   directory mask = 0775\n")
 	users := enabledUsers(cfg)
 	if len(users) > 0 && !cfg.SMB.GuestOK {
-		fmt.Fprintf(&b, "   valid users = %s\n", strings.Join(users, " "))
+		// When folder ACLs exist, the aggregate share is limited to users who
+		// may at least read the share root; everybody else reaches the tree
+		// through their own folder shares below.
+		if len(cfg.Folders) > 0 {
+			rootUsers := acl.Readers(cfg.Folders, "", users)
+			if len(rootUsers) > 0 {
+				fmt.Fprintf(&b, "   valid users = %s\n", strings.Join(rootUsers, " "))
+			} else {
+				fmt.Fprintf(&b, "   valid users = %s\n", strings.Join(users, " "))
+			}
+		} else {
+			fmt.Fprintf(&b, "   valid users = %s\n", strings.Join(users, " "))
+		}
 	}
+	renderFolders(&b, cfg, users)
 	return b.String()
+}
+
+// renderFolders emits one Samba share per folder that has an ACL, using
+// "read only = yes" plus an explicit "write list" to express per-user rights.
+func renderFolders(b *strings.Builder, cfg *config.Config, users []string) {
+	if len(cfg.Folders) == 0 {
+		return
+	}
+	root := strings.TrimRight(orDefault(cfg.SMB.SharePath, "/opt/var/keenetic-smb-ui/share"), "/")
+	mainShare := orDefault(cfg.SMB.ShareName, "all")
+	seen := map[string]bool{mainShare: true}
+	for _, f := range cfg.Folders {
+		if !f.Enabled {
+			continue
+		}
+		// The share root is expressed by the main [all] section above: its
+		// valid users are already computed from the root folder ACL.
+		if acl.CleanPath(f.Path) == "" {
+			continue
+		}
+		readers := acl.Readers(cfg.Folders, f.Path, users)
+		if len(readers) == 0 {
+			continue
+		}
+		writers := acl.Writers(cfg.Folders, f.Path, users)
+		name := acl.ShareName(f)
+		if seen[name] {
+			name += "-2"
+		}
+		seen[name] = true
+		dir := root
+		if p := acl.CleanPath(f.Path); p != "" {
+			dir += "/" + p
+		}
+		fmt.Fprintf(b, "\n[%s]\n", name)
+		fmt.Fprintf(b, "   path = %s\n", dir)
+		fmt.Fprintf(b, "   comment = folder ACL (%s)\n", acl.CleanPath(f.Path))
+		fmt.Fprintf(b, "   browseable = yes\n")
+		fmt.Fprintf(b, "   read only = yes\n")
+		fmt.Fprintf(b, "   valid users = %s\n", strings.Join(readers, " "))
+		if len(writers) > 0 {
+			fmt.Fprintf(b, "   write list = %s\n", strings.Join(writers, " "))
+		}
+		if cfg.SMB.ForceUser {
+			fmt.Fprintf(b, "   force user = root\n")
+			fmt.Fprintf(b, "   force group = root\n")
+		}
+		fmt.Fprintf(b, "   follow symlinks = yes\n")
+		fmt.Fprintf(b, "   wide links = yes\n")
+		fmt.Fprintf(b, "   create mask = 0664\n")
+		fmt.Fprintf(b, "   directory mask = 0775\n")
+	}
 }
 
 func enabledUsers(cfg *config.Config) []string {

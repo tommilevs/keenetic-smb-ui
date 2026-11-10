@@ -33,6 +33,7 @@
       <button class="nav" data-view="smb">SMB-сервер</button>
       <button class="nav" data-view="shares">Общие диски</button>
       <button class="nav" data-view="users">Пользователи</button>
+      <button class="nav" data-view="acl">Доступ к папкам</button>
       <button class="nav" data-view="stats">Статистика</button>
       <button class="nav" data-view="logs">Логи</button>
       <button class="nav" data-view="settings">Настройки</button>
@@ -118,6 +119,19 @@
           <button class="btn ghost" id="users-import" title="Прочитать пользователей из NDMS (ndmc)">Импорт из роутера</button>
           <button class="btn ghost" id="users-save">Сохранить</button></div>
         <p class="hint" id="users-msg" aria-live="polite"></p>
+      </article>
+    </section>
+
+    <section class="view" id="view-acl">
+      <article class="card wide">
+        <h3>Права на папки</h3>
+        <p class="hint">Для каждой папки внутри шары можно задать доступ пользователям: запрещён, чтение или чтение и запись. Правило с галочкой «Наследовать» применяется и к вложенным папкам, пока там нет своего правила.</p>
+        <div class="tablewrap"><table class="tbl"><thead id="acl-head"></thead><tbody id="acl-body"></tbody></table></div>
+        <div class="row">
+          <button class="btn" id="acl-add">Добавить папку</button>
+          <button class="btn ghost" id="acl-save">Сохранить правила</button>
+        </div>
+        <p class="hint" id="acl-msg" aria-live="polite"></p>
       </article>
     </section>
 

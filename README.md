@@ -6,7 +6,7 @@
 
 **English** · [Русский](README.ru.md)
 
-[Overview](#why) · [Features](#features) · [Install](#install) · [Web UI](#web-ui) · [Disks](#aggregated-disks) · [Proxmox example](#wiring-several-proxmox-hosts-worked-example) · [Users](#users) · [Updates](#updates) · [Configuration](#configuration) · [Releases](../../releases) · [Issues](../../issues)
+[Overview](#why) · [Features](#features) · [Install](#install) · [Web UI](#web-ui) · [Disks](#aggregated-disks) · [Proxmox example](#wiring-several-proxmox-hosts-worked-example) · [Folder ACL](#folder-permissions) · [Users](#users) · [Updates](#updates) · [Configuration](#configuration) · [Releases](../../releases) · [Issues](../../issues)
 
 [![release](https://img.shields.io/github/v/release/tommilevs/keenetic-smb-ui?style=flat-square&label=release&color=4ea1ff)](../../releases)
 [![license](https://img.shields.io/badge/license-AGPL--3.0-3ddc97?style=flat-square)](LICENSE)
@@ -126,6 +126,7 @@ internet access required.
 | **SMB server** | IP, bridge, workgroup, server name, share name/path, ports, protocols, guest, read-only, `force user`, extra `smb.conf` lines, start/stop/restart, config preview |
 | **Disks** | remote shares CRUD, enable/disable, read-only flag, live mount status |
 | **Users** | SMB accounts, per-user password and read-only, one-click import from NDMS |
+| **Folder access** | Keenetic-style ACL matrix: per-folder shares, per-user read/write/deny, inheritance |
 | **Statistics** | uptime, load, memory, network, SMB sessions, history chart |
 | **Logs** | tail of the managed `samba.log` |
 | **Settings** | panel credentials, listen address, read-only mode, stats sampling, updates |
@@ -182,6 +183,37 @@ Result on the router (`10.30.0.2` is the app's dedicated SMB address):
 Step-by-step instructions, the exact `smb.conf` snippet for the Proxmox side, mount
 options the app uses and a troubleshooting table:
 **[docs/proxmox-disks.md](docs/proxmox-disks.md)**
+
+## Folder permissions
+
+Besides the per-account flag, the panel has a Keenetic-style ACL matrix
+(**Folder access**): every folder inside the aggregated tree can be published as its
+own SMB share with its own user list.
+
+- Access levels per user: **denied**, **read**, **read + write**, or no rule
+  (`— inherits`).
+- A rule with inheritance enabled applies to subfolders until a subfolder defines its
+  own rule; the `only here` variants restrict a rule to one folder.
+- Two users on the same folder: `admin` = read + write, `vms` = read → `admin` can
+  copy files in, `vms` can only browse. Verified on a live Samba instance.
+- When ACLs exist, the aggregate `all` share is limited to users who may read the
+  root; everyone else connects directly to their folder share
+  (`\\<smb-ip>\disk-c`, `\\<smb-ip>\snippets`, …).
+- Enforcement is pure Samba: generated sections use `read only = yes` plus an
+  explicit `write list`, so no filesystem ACLs or xattrs are required on top of
+  mounted CIFS disks.
+
+Folder shares appear in `smb.conf` as regular sections and are visible in the share
+list, for example:
+
+```ini
+[disk-c]
+   path = /opt/var/keenetic-smb-ui/share/proxmox-100-5tb
+   read only = yes
+   valid users = admin vms
+   write list = admin
+   force user = root
+```
 
 ## Users
 

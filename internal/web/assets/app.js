@@ -5,7 +5,7 @@ const state = { cfg: null, status: null, view: 'overview', timer: null };
 
 const VIEW_TITLES = {
   overview: 'Обзор', smb: 'SMB-сервер', shares: 'Общие диски', users: 'Пользователи',
-  stats: 'Статистика', logs: 'Логи', settings: 'Настройки',
+  acl: 'Доступ к папкам', stats: 'Статистика', logs: 'Логи', settings: 'Настройки',
 };
 
 async function api(path, opts = {}) {
@@ -52,8 +52,9 @@ function show(view) {
   document.querySelectorAll('.view').forEach((s) => s.classList.toggle('active', s.id === `view-${view}`));
   $('title').textContent = VIEW_TITLES[view] || view;
   if (view === 'logs') loadLogs();
+  if (view === 'acl') loadAcl();
   if (view === 'settings' || view === 'smb' || view === 'shares' || view === 'users') fillForms();
-  if (view !== 'logs') refresh();
+  if (view !== 'logs' && view !== 'acl') refresh();
 }
 
 function fmtBytes(n) {
@@ -298,6 +299,19 @@ async function startApp() {
   };
   $('remote-add').onclick = () => $('remotes').appendChild(rowRemote());
   $('user-add').onclick = () => $('users').appendChild(rowUser());
+  $('acl-add').onclick = async () => {
+    try {
+      const d = await api('/api/folders');
+      $('acl-body').appendChild(aclRow({ path: '', enabled: true, rules: [] }, d.users || [], null));
+    } catch (e) { $('acl-msg').textContent = 'Ошибка: ' + e.message; }
+  };
+  $('acl-save').onclick = async () => {
+    try {
+      const r = await api('/api/folders', { method: 'POST', body: JSON.stringify({ folders: collectAcl() }) });
+      await loadAcl();
+      $('acl-msg').textContent = r.warning ? ('Сохранено с предупреждением: ' + r.warning) : 'Сохранено, Samba перезапущена.';
+    } catch (e) { $('acl-msg').textContent = 'Ошибка: ' + e.message; }
+  };
   $('users-import').onclick = async () => {
     const msg = $('users-msg');
     try {
@@ -368,8 +382,96 @@ async function startApp() {
   state.timer = setInterval(refresh, 5000);
 }
 
-async function loadLogs() {
+const ACL_CHOICES = [
+  ['', '— наследуется'],
+  ['ro', 'Чтение'],
+  ['rw', 'Чтение и запись'],
+  ['none', 'Запрещён'],
+  ['ro!', 'Только здесь: чтение'],
+  ['rw!', 'Только здесь: запись'],
+  ['none!', 'Только здесь: запрещён'],
+];
+
+function aclSelect(value, user) {
+  const cur = value || '';
+  return `<select class="a-cell" data-user="${user}">` +
+    ACL_CHOICES.map(([v, label]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${label}</option>`).join('') +
+    '</select>';
+}
+
+async function loadAcl() {
+  const msg = $('acl-msg');
   try {
+    const data = await api('/api/folders');
+    renderAcl(data);
+    msg.textContent = '';
+  } catch (e) {
+    msg.textContent = 'Ошибка: ' + e.message;
+  }
+}
+
+function renderAcl(data) {
+  const users = data.users || [];
+  $('acl-head').innerHTML = '<tr><th>Папка</th><th>Шара</th><th>Вкл</th>' +
+    users.map((u) => `<th>${u}</th>`).join('') + '<th></th></tr>';
+
+  const body = $('acl-body');
+  body.innerHTML = '';
+  const folders = data.folders || [];
+  if (!folders.length) {
+    body.innerHTML = `<tr><td colspan="${users.length + 4}" class="hint">Правил пока нет — нажмите «Добавить папку», укажите путь внутри шары и выдайте доступ пользователям.</td></tr>`;
+  }
+  folders.forEach((f) => body.appendChild(aclRow(f, users, data.matrix && data.matrix[f.id])));
+}
+
+function aclRow(f, users, matrix) {
+  const tr = document.createElement('tr');
+  tr.dataset.id = f.id || '';
+  const access = (u) => {
+    if (!f || !f.rules) return '';
+    const r = (f.rules || []).find((x) => (x.user || '').toLowerCase() === u.toLowerCase());
+    if (!r) return '';
+    return r.access + (r.inherit ? '' : '!');
+  };
+  const eff = (u) => (matrix && matrix[u]) || '';
+  const cells = users.map((u) => {
+    const s = aclSelect(access(u), u);
+    const title = eff(u) ? `действует: ${eff(u)}` : 'доступа нет';
+    return `<td>${s.replace('<select ', `<select title="${title}" `)}</td>`;
+  }).join('');
+
+  tr.innerHTML = `
+    <td><input class="a-path" value="${f.path || ''}" placeholder="proxmox" autocomplete="off" size="14"></td>
+    <td><input class="a-name" value="${f.name || ''}" placeholder="авто" autocomplete="off" size="10"></td>
+    <td><input class="a-en" type="checkbox" ${f.enabled !== false ? 'checked' : ''}></td>
+    ${cells}
+    <td><button class="icon-btn" aria-label="Удалить папку" title="Удалить папку">✕</button></td>`;
+  tr.querySelector('.icon-btn').onclick = () => {
+    if (confirm('Удалить правило для этой папки?')) tr.remove();
+  };
+  return tr;
+}
+
+function collectAcl() {
+  return [...document.querySelectorAll('#acl-body tr')].filter((tr) => tr.querySelector('.a-path')).map((tr) => {
+    const path = tr.querySelector('.a-path').value.trim().replace(/^\/+|\/+$/g, '');
+    const rules = [...tr.querySelectorAll('.a-cell')].map((sel) => {
+      let v = sel.value;
+      if (!v) return null;
+      const inherit = !v.endsWith('!');
+      return { user: sel.dataset.user, access: v.replace('!', ''), inherit };
+    }).filter(Boolean);
+    return {
+      id: tr.dataset.id,
+      path,
+      name: tr.querySelector('.a-name').value.trim(),
+      enabled: tr.querySelector('.a-en').checked,
+      rules,
+    };
+  });
+}
+
+async function loadLogs() {  try {
     $('logs').textContent = await api('/api/logs');
   } catch (e) {
     $('logs').textContent = 'Лог недоступен: ' + e.message;

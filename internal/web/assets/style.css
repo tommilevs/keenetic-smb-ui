@@ -85,4 +85,11 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 .pill.ok{color:#0a1a12;background:var(--ok)} .pill.err{color:#2a0d0d;background:var(--err)} .pill.warn{color:#2a1c05;background:var(--warn)}
 .icon-btn{all:unset;cursor:pointer;color:var(--muted);padding:2px 6px;border-radius:6px}
 .icon-btn:hover{color:var(--err);background:var(--panel2)}
+
+/* folder ACL matrix */
+#view-acl .tbl{min-width:1080px}
+#view-acl .tbl th,#view-acl .tbl td{white-space:nowrap;vertical-align:middle}
+#view-acl .a-cell{min-width:132px;font-size:12px;padding:6px 8px}
+#view-acl .a-path{width:190px;font-size:12px;padding:6px 8px}
+#view-acl .a-name{width:120px;font-size:12px;padding:6px 8px}
 @media(max-width:820px){.shell{grid-template-columns:1fr}.side{flex-direction:row;flex-wrap:wrap;gap:8px}.side nav{flex-direction:row;flex-wrap:wrap}.sidefoot{display:none}}

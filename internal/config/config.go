@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/tommilevs/keenetic-smb-ui/internal/acl"
 )
 
 // User is an SMB account served by the application's Samba instance.
@@ -74,11 +76,16 @@ type Paths struct {
 	SambaPidDir string `json:"samba_pid_dir"`
 }
 
+// Folder is a directory inside the exported share with its own access list.
+// The type lives in the acl package; this alias keeps configuration code short.
+type Folder = acl.Folder
+
 // Config is the root document persisted to disk.
 type Config struct {
 	Web     Web     `json:"web"`
 	SMB     SMB     `json:"smb"`
 	Remotes []Remote `json:"remotes"`
+	Folders []Folder `json:"folders"`
 	Stats   Stats   `json:"stats"`
 	Paths   Paths   `json:"paths"`
 }
