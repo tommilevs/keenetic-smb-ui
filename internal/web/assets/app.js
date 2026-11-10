@@ -9,10 +9,41 @@ const VIEW_TITLES = {
 };
 
 async function api(path, opts = {}) {
-  const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  const res = await fetch(path, {
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  });
+  if (res.status === 401) {
+    showLogin('Сессия истекла, войдите заново');
+    throw new Error('unauthorized');
+  }
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   const ct = res.headers.get('content-type') || '';
   return ct.includes('json') ? res.json() : res.text();
+}
+
+function showLogin(msg) {
+  $('login').classList.remove('hidden');
+  $('login-msg').textContent = msg || '';
+  clearInterval(state.timer);
+}
+
+async function doLogin(ev) {
+  ev.preventDefault();
+  const r = await fetch('/api/login', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user: $('login-user').value.trim(), pass: $('login-pass').value }),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (data.status === 'ok') {
+    $('login').classList.add('hidden');
+    startApp();
+  } else {
+    $('login-msg').textContent = 'Неверный логин или пароль';
+  }
 }
 
 function show(view) {
@@ -22,6 +53,7 @@ function show(view) {
   $('title').textContent = VIEW_TITLES[view] || view;
   if (view === 'logs') loadLogs();
   if (view === 'settings' || view === 'smb' || view === 'shares' || view === 'users') fillForms();
+  if (view !== 'logs') refresh();
 }
 
 function fmtBytes(n) {
@@ -37,18 +69,32 @@ function fmtUptime(sec) {
   return d > 0 ? `${d}д ${h}ч` : h > 0 ? `${h}ч ${m}м` : `${m}м`;
 }
 
-function sparkline(el, series, max, color) {
-  const w = 600, h = el.viewBox.baseVal.height || 140;
+function sparkline(el, series, max, color, unit) {
+  const w = Math.max(el.clientWidth || 600, 200);
+  const h = Math.max(el.clientHeight || 140, 80);
+  el.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  const pad = { l: 34, r: 8, t: 10, b: 16 };
   if (!series.length) { el.innerHTML = ''; return; }
-  const step = w / Math.max(series.length - 1, 1);
-  const pts = series.map((v, i) => `${(i * step).toFixed(1)},${(h - (Math.min(v, max) / max) * (h - 8) - 4).toFixed(1)}`);
-  const area = `0,${h} ${pts.join(' ')} ${w},${h}`;
+  const iw = w - pad.l - pad.r, ih = h - pad.t - pad.b;
+  const step = iw / Math.max(series.length - 1, 1);
+  const y = (v) => pad.t + ih - (Math.min(v, max) / max) * ih;
+  const pts = series.map((v, i) => `${(pad.l + i * step).toFixed(1)},${y(v).toFixed(1)}`);
+  const area = `${pad.l},${pad.t + ih} ${pts.join(' ')} ${pad.l + iw},${pad.t + ih}`;
+  const grid = [0, 0.5, 1].map((f) => {
+    const gy = pad.t + ih - f * ih;
+    const label = (max * f).toFixed(max < 10 ? 1 : 0);
+    return `<line class="grid" x1="${pad.l}" y1="${gy}" x2="${pad.l + iw}" y2="${gy}"/>` +
+      `<text x="2" y="${gy + 3}">${label}</text>`;
+  }).join('');
+  const last = series[series.length - 1];
   el.innerHTML =
     `<defs><linearGradient id="g${el.id}" x1="0" y1="0" x2="0" y2="1">` +
     `<stop offset="0%" stop-color="${color}" stop-opacity=".35"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/>` +
-    `</linearGradient></defs>` +
+    `</linearGradient></defs>` + grid +
     `<polygon points="${area}" fill="url(#g${el.id})"/>` +
-    `<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2"/>`;
+    `<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2"/>` +
+    `<circle cx="${pad.l + (series.length - 1) * step}" cy="${y(last)}" r="3" fill="${color}"/>` +
+    `<text x="${w - pad.r}" y="${pad.t + 9}" text-anchor="end">${last.toFixed(unit === '%' ? 0 : 1)}${unit || ''}</text>`;
 }
 
 async function refresh() {
@@ -66,12 +112,14 @@ async function refresh() {
     $('ov-share').textContent = '\\\\' + st.smb_ip + '\\' + st.share;
     $('ov-root').textContent = st.root;
     $('ov-sessions').textContent = s.sessions;
-    $('ov-net').textContent = `${s.rx_kbps.toFixed(0)} / ${s.tx_kbps.toFixed(0)} КБ/с`;
+    $('ov-net').innerHTML = `<span class="rx">↓ ${s.rx_kbps.toFixed(0)}</span> <span class="tx">↑ ${s.tx_kbps.toFixed(0)}</span> <small>КБ/с</small>`;
 
     const hist = s.history || [];
-    sparkline($('chart-load'), hist.map((p) => p.load1), Math.max(2, ...hist.map((p) => p.load1)) * 1.2, '#4ea1ff');
-    sparkline($('chart-net'), hist.map((p) => p.rx_kbps), Math.max(64, ...hist.map((p) => p.rx_kbps)) * 1.2, '#3ddc97');
-    sparkline($('chart-load2'), hist.map((p) => p.mem_used), 100, '#7b5cff');
+    const loadMax = Math.max(1, ...hist.map((p) => p.load1)) * 1.2;
+    const netMax = Math.max(64, ...hist.map((p) => Math.max(p.rx_kbps, p.tx_kbps))) * 1.2;
+    sparkline($('chart-load'), hist.map((p) => p.load1), loadMax, '#4ea1ff', '');
+    sparkline($('chart-net'), hist.map((p) => p.rx_kbps), netMax, '#3ddc97', '');
+    sparkline($('chart-load2'), hist.map((p) => p.load1), Math.max(1, ...hist.map((p) => p.load1)) * 1.2, '#7b5cff', '');
 
     $('st-uptime').textContent = fmtUptime(s.uptime_sec);
     $('st-load').textContent = s.load.map((v) => v.toFixed(2)).join(' / ');
@@ -79,10 +127,15 @@ async function refresh() {
     $('st-membar').style.width = s.mem_used_pc + '%';
     $('st-sessions').textContent = s.sessions;
 
-    $('ov-disks').innerHTML = (s.disks || []).map((d) =>
-      `<tr><td>${d.path}</td><td>${fmtBytes(d.used)} (${d.used_pc}%)</td><td>${fmtBytes(d.free)}</td>` +
-      `<td><span class="pill ${d.used_pc > 90 ? 'err' : d.used_pc > 75 ? 'warn' : 'ok'}">${d.used_pc}%</span></td></tr>`
-    ).join('') || '<tr><td colspan="4" class="hint">нет данных</td></tr>';
+    const shorten = (p) => p.replace(/^\/opt\/var\/keenetic-smb-ui\/share\/?/, '') || 'all';
+    $('ov-disks').innerHTML = (s.disks || []).map((d) => {
+      const cls = d.used_pc > 90 ? 'err' : d.used_pc > 75 ? 'warn' : 'ok';
+      return `<tr><td><span class="diskname" title="${d.path}">${shorten(d.path)}</span></td>` +
+        `<td><div class="diskrow"><div class="diskbar"><i style="width:${d.used_pc}%"></i></div>` +
+        `<span>${fmtBytes(d.used)} · ${d.used_pc}%</span></div></td>` +
+        `<td>${fmtBytes(d.free)}</td>` +
+        `<td><span class="pill ${cls}">${d.used_pc}%</span></td></tr>`;
+    }).join('') || '<tr><td colspan="4" class="hint">нет данных</td></tr>';
 
     if (state.view === 'shares') renderRemoteStatus(st.remotes);
   } catch (e) {
@@ -208,8 +261,12 @@ async function saveConfig() {
   $('cfg-msg').textContent = 'Сохранено.';
 }
 
-async function main() {
+async function startApp() {
   document.querySelectorAll('.nav').forEach((b) => (b.onclick = () => show(b.dataset.view)));
+  $('btn-logout').onclick = async () => {
+    try { await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' }); } catch (e) { /* ignore */ }
+    location.reload();
+  };
   $('btn-refresh').onclick = refresh;
   $('btn-apply').onclick = async () => {
     try { const r = await api('/api/remotes/apply', { method: 'POST' }); console.log(r); } catch (e) { alert(e.message); }
@@ -256,4 +313,19 @@ async function loadLogs() {
   }
 }
 
-main();
+async function boot() {
+  $('login-form').addEventListener('submit', doLogin);
+  try {
+    const s = await fetch('/api/session', { credentials: 'same-origin' }).then((r) => r.json());
+    if (s.authenticated) {
+      $('login').classList.add('hidden');
+      startApp();
+    } else {
+      showLogin();
+    }
+  } catch (e) {
+    showLogin('Панель недоступна');
+  }
+}
+
+boot();

@@ -2,7 +2,6 @@
 package web
 
 import (
-	"crypto/subtle"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -25,11 +24,12 @@ var assets embed.FS
 
 // Server bundles HTTP handlers with the domain managers.
 type Server struct {
-	cfg    *config.Config
-	smb    *samba.Manager
-	shares *shares.Manager
-	stats  *stats.Collector
-	http   *http.Server
+	cfg      *config.Config
+	smb      *samba.Manager
+	shares   *shares.Manager
+	stats    *stats.Collector
+	sessions *sessions
+	http     *http.Server
 }
 
 // New wires the server.
@@ -40,12 +40,16 @@ func New(cfg *config.Config) (*Server, error) {
 		paths = append(paths, sh.MountPoint(r))
 	}
 	s := &Server{
-		cfg:    cfg,
-		smb:    samba.New(cfg),
-		shares: sh,
-		stats:  stats.New(cfg.Stats.HistoryLen, paths),
+		cfg:      cfg,
+		smb:      samba.New(cfg),
+		shares:   sh,
+		stats:    stats.New(cfg.Stats.HistoryLen, paths),
+		sessions: newSessions(),
 	}
 	mux := http.NewServeMux()
+	mux.HandleFunc("/api/login", s.handleLogin)
+	mux.HandleFunc("/api/logout", s.handleLogout)
+	mux.HandleFunc("/api/session", s.handleSession)
 	mux.HandleFunc("/api/status", s.auth(s.handleStatus))
 	mux.HandleFunc("/api/config", s.auth(s.handleConfig))
 	mux.HandleFunc("/api/config/raw", s.auth(s.handleRawConfig))
@@ -91,12 +95,38 @@ func (s *Server) Shutdown(d time.Duration) error {
 	return s.http.Shutdown(ctx)
 }
 
+// Bootstrap brings the managed stack up after start: IP alias, smb.conf,
+// users, smbd and the aggregated mounts. Failures are logged, never fatal —
+// the UI must stay reachable so the operator can fix things.
+func (s *Server) Bootstrap() {
+	go func() {
+		if !s.cfg.SMB.Enabled {
+			return
+		}
+		if changed, err := s.smb.EnsureBindIP(); err != nil {
+			log.Printf("bootstrap: bind ip: %v", err)
+		} else if changed {
+			log.Printf("bootstrap: assigned %s", s.cfg.SMB.ListenIP)
+		}
+		if err := s.smb.WriteConfig(); err != nil {
+			log.Printf("bootstrap: write config: %v", err)
+		}
+		if err := s.smb.SyncUsers(); err != nil {
+			log.Printf("bootstrap: users: %v", err)
+		}
+		if err := s.smb.Start(); err != nil {
+			log.Printf("bootstrap: smbd: %v", err)
+		}
+		for _, e := range s.shares.Apply() {
+			log.Printf("bootstrap: share: %v", e)
+		}
+		log.Printf("bootstrap: done, smb=%s", s.smb.Status())
+	}()
+}
+
 func (s *Server) auth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user, pass, ok := r.BasicAuth()
-		cfg := s.cfg.Web
-		if !ok || subtle.ConstantTimeCompare([]byte(user), []byte(cfg.User)) != 1 ||
-			subtle.ConstantTimeCompare([]byte(pass), []byte(cfg.Password)) != 1 {
+		if !s.authenticated(r) {
 			w.Header().Set("WWW-Authenticate", `Basic realm="keenetic-smb-ui"`)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
@@ -330,6 +360,9 @@ func writeJSON(w http.ResponseWriter, v any) {
 func logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+		// The UI is embedded in the binary and ships with every release; never
+		// let a browser serve a stale bundle after an update.
+		w.Header().Set("Cache-Control", "no-store, must-revalidate")
 		next.ServeHTTP(w, r)
 		log.Printf("%s %s %s", r.Method, r.URL.Path, time.Since(start).Round(time.Millisecond))
 	})

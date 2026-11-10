@@ -7,6 +7,18 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="login" class="login-wrap hidden">
+  <form id="login-form" class="login-card" autocomplete="on">
+    <div class="brand login-brand">
+      <span class="logo">▚</span>
+      <div><b>Keenetic SMB</b><small>вход в панель</small></div>
+    </div>
+    <label>Логин<input id="login-user" value="admin" autocomplete="username"></label>
+    <label>Пароль<input id="login-pass" type="password" autocomplete="current-password"></label>
+    <button class="btn primary" type="submit">Войти</button>
+    <p class="hint" id="login-msg"></p>
+  </form>
+</div>
 <div class="shell">
   <aside class="side">
     <div class="brand">
@@ -25,6 +37,7 @@
     <div class="sidefoot">
       <span id="ver">v—</span>
       <span id="srvdot" class="dot"></span><span id="srvtext">…</span>
+      <button id="btn-logout" class="linklike" title="Выйти">выйти</button>
     </div>
   </aside>
 

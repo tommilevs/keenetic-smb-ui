@@ -51,6 +51,7 @@ func main() {
 	errCh := make(chan error, 1)
 	go func() { errCh <- srv.Run() }()
 	log.Printf("keenetic-smb-ui %s listening on http://%s", version, cfg.Web.Listen)
+	srv.Bootstrap()
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
