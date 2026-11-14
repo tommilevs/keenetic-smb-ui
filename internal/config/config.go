@@ -100,7 +100,7 @@ func Default() *Config {
 		Web: Web{
 			Listen:   "0.0.0.0:8099",
 			User:     "admin",
-			Password: "lip368lip",
+			Password: "1235467890",
 		},
 		SMB: SMB{
 			Enabled:      true,
@@ -115,7 +115,7 @@ func Default() *Config {
 			MinProtocol:  "SMB2",
 			MaxProtocol:  "SMB3_11",
 			Users: []User{
-				{Name: "admin", Password: "lip368lip", Enabled: true},
+				{Name: "admin", Password: "1235467890", Enabled: true},
 			},
 		},
 		Stats: Stats{IntervalSec: 5, HistoryLen: 120},

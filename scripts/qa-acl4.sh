@@ -2,7 +2,7 @@
 export PATH=/opt/sbin:/opt/bin:$PATH
 CK=/tmp/ckb.txt
 curl -s -c "$CK" -X POST http://127.0.0.1:8099/api/login -H 'Content-Type: application/json' \
-  -d '{"user":"admin","pass":"lip368lip"}' >/dev/null
+  -d '{"user":"admin","pass":"1235467890"}' >/dev/null
 
 echo "=== set rules (correct nested path)"
 curl -s -b "$CK" -X POST http://127.0.0.1:8099/api/folders -H 'Content-Type: application/json' -d '{
@@ -23,14 +23,14 @@ curl -s -b "$CK" http://127.0.0.1:8099/api/folders | python3 -c "import json,sys
 
 sleep 1
 echo "=== admin on disk-c: list + write"
-smbclient //192.168.160.2/disk-c -U 'admin%lip368lip' -m SMB3 -c 'ls' 2>&1 | tail -2
+smbclient //192.168.160.2/disk-c -U 'admin%1235467890' -m SMB3 -c 'ls' 2>&1 | tail -2
 echo x > /tmp/x.txt
-smbclient //192.168.160.2/disk-c -U 'admin%lip368lip' -m SMB3 -c 'put /tmp/x.txt acl-test.txt; del acl-test.txt' 2>&1 | tail -2
+smbclient //192.168.160.2/disk-c -U 'admin%1235467890' -m SMB3 -c 'put /tmp/x.txt acl-test.txt; del acl-test.txt' 2>&1 | tail -2
 echo "=== vms on disk-c: list + write (write must fail)"
-smbclient //192.168.160.2/disk-c -U 'vms%lip368lip' -m SMB3 -c 'ls' 2>&1 | tail -2
-smbclient //192.168.160.2/disk-c -U 'vms%lip368lip' -m SMB3 -c 'put /tmp/x.txt acl-test.txt' 2>&1 | tail -2
+smbclient //192.168.160.2/disk-c -U 'vms%1235467890' -m SMB3 -c 'ls' 2>&1 | tail -2
+smbclient //192.168.160.2/disk-c -U 'vms%1235467890' -m SMB3 -c 'put /tmp/x.txt acl-test.txt' 2>&1 | tail -2
 echo "=== vms on snippets: connect must be denied (none)"
-smbclient //192.168.160.2/snippets -U 'vms%lip368lip' -m SMB3 -c 'ls' 2>&1 | tail -2
+smbclient //192.168.160.2/snippets -U 'vms%1235467890' -m SMB3 -c 'ls' 2>&1 | tail -2
 echo "=== admin on snippets: allowed"
-smbclient //192.168.160.2/snippets -U 'admin%lip368lip' -m SMB3 -c 'ls' 2>&1 | tail -3
+smbclient //192.168.160.2/snippets -U 'admin%1235467890' -m SMB3 -c 'ls' 2>&1 | tail -3
 rm -f /tmp/x.txt

@@ -17,10 +17,10 @@ curl -s --max-time 5 http://127.0.0.1:8099/api/session
 echo
 echo "=== update check"
 CK=/tmp/ckf.txt
-curl -s -c "$CK" -X POST http://127.0.0.1:8099/api/login -H 'Content-Type: application/json' -d '{"user":"admin","pass":"lip368lip"}' >/dev/null
+curl -s -c "$CK" -X POST http://127.0.0.1:8099/api/login -H 'Content-Type: application/json' -d '{"user":"admin","pass":"1235467890"}' >/dev/null
 curl -s -b "$CK" http://127.0.0.1:8099/api/update | head -c 200
 echo
 echo "=== share tree"
-smbclient //192.168.160.2/all -U 'admin%lip368lip' -m SMB3 -c 'ls' 2>&1 | tail -7
+smbclient //192.168.160.2/all -U 'admin%1235467890' -m SMB3 -c 'ls' 2>&1 | tail -7
 echo "=== native NDMS SMB untouched (other IPs on 445)"
 netstat -lntp 2>/dev/null | grep ':445' | grep -v '192.168.160.2' | head -3

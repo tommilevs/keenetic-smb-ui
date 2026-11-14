@@ -2,7 +2,7 @@
   "web": {
     "listen": "0.0.0.0:8099",
     "user": "admin",
-    "password": "lip368lip",
+    "password": "1235467890",
     "readonly": false
   },
   "smb": {
@@ -16,7 +16,7 @@
     "min_protocol": "SMB2",
     "max_protocol": "SMB3_11",
     "users": [
-      { "name": "admin", "password": "lip368lip", "readonly": false, "enabled": true }
+      { "name": "admin", "password": "1235467890", "readonly": false, "enabled": true }
     ],
     "guest_ok": false
   },

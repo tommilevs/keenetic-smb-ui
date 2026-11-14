@@ -116,7 +116,7 @@ Entware expects the legacy ipkg layout, not a Debian `ar` archive.
 
 ## Web UI
 
-Open `http://<router-ip>:8099` and sign in with `admin` / `lip368lip`
+Open `http://<router-ip>:8099` and sign in with `admin` / `1235467890`
 (change it in **Settings**). All assets are embedded in the binary — no CDN, no
 internet access required.
 

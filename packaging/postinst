@@ -5,5 +5,5 @@ set -e
 mkdir -p /opt/var/keenetic-smb-ui/log /opt/etc/keenetic-smb-ui
 chmod 600 /opt/etc/keenetic-smb-ui/config.json 2>/dev/null || true
 /opt/etc/init.d/S99keenetic-smb-ui start >/dev/null 2>&1 || true
-echo "keenetic-smb-ui: панель на http://<ip-роутера>:8099 (admin/lip368lip)"
+echo "keenetic-smb-ui: панель на http://<ip-роутера>:8099 (admin/1235467890)"
 exit 0
