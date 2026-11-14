@@ -1,7 +1,15 @@
 'use strict';
 
 const $ = (id) => document.getElementById(id);
-const state = { cfg: null, status: null, view: 'overview', timer: null };
+const state = { cfg: null, status: null, view: 'overview', timer: null, autorefresh: true };
+
+// Which toolbar controls make sense on which page. "Обновить" only where data is
+// live, "Применить" only where settings are written to smb.conf.
+const TOOLBAR = {
+  refresh: ['overview', 'shares', 'users', 'stats'],
+  apply: ['smb', 'shares', 'settings'],
+  autorefresh: ['overview', 'stats', 'shares'],
+};
 
 const VIEW_TITLES = {
   overview: 'Обзор', smb: 'SMB-сервер', shares: 'Общие диски', users: 'Пользователи',
@@ -47,14 +55,39 @@ async function doLogin(ev) {
 }
 
 function show(view) {
+  if (!VIEW_TITLES[view]) view = 'overview';
   state.view = view;
+  if (location.hash !== '#' + view) history.replaceState(null, '', '#' + view);
   document.querySelectorAll('.nav').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
   document.querySelectorAll('.view').forEach((s) => s.classList.toggle('active', s.id === `view-${view}`));
   $('title').textContent = VIEW_TITLES[view] || view;
+  updateToolbar(view);
   if (view === 'logs') loadLogs();
   if (view === 'acl') loadAcl();
   if (view === 'settings' || view === 'smb' || view === 'shares' || view === 'users') fillForms();
   if (view !== 'logs' && view !== 'acl') refresh();
+}
+
+// Hide controls that do nothing on the current page.
+function updateToolbar(view) {
+  const has = (k) => (TOOLBAR[k] || []).includes(view);
+  $('btn-refresh').classList.toggle('hidden', !has('refresh'));
+  $('btn-apply').classList.toggle('hidden', !has('apply'));
+  const ar = $('autorefresh-wrap');
+  if (ar) ar.classList.toggle('hidden', !has('autorefresh'));
+}
+
+function setAutoRefresh(on) {
+  state.autorefresh = !!on;
+  localStorage.setItem('ksmbui.autorefresh', on ? '1' : '0');
+  clearInterval(state.timer);
+  state.timer = null;
+  if (on) state.timer = setInterval(refresh, 5000);
+}
+
+function currentView() {
+  const v = (location.hash || '').replace('#', '');
+  return VIEW_TITLES[v] ? v : 'overview';
 }
 
 function fmtBytes(n) {
@@ -196,7 +229,7 @@ function rowUser(u = {}) {
   tr.innerHTML = `
     <td><input class="f-name" value="${u.name || ''}" placeholder="admin" autocomplete="off" spellcheck="false"></td>
     <td><input class="f-pass" type="password" placeholder="без изменений" autocomplete="new-password"></td>
-    <td><input class="f-ro" type="checkbox" ${u.readonly ? 'checked' : ''}></td>
+    <td><input class="f-ro" type="checkbox" title="Только чтение для этого пользователя: он сможет открывать и копировать файлы, но не записывать" ${u.readonly ? 'checked' : ''}></td>
     <td><input class="f-en" type="checkbox" ${u.enabled !== false ? 'checked' : ''}></td>
     <td><button class="icon-btn" aria-label="Удалить пользователя" title="Удалить пользователя">✕</button></td>`;
   tr.querySelector('.icon-btn').onclick = () => {
@@ -292,11 +325,23 @@ async function startApp() {
     try { await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' }); } catch (e) { /* ignore */ }
     location.reload();
   };
-  $('btn-refresh').onclick = refresh;
+  $('btn-refresh').onclick = () => refresh();
   $('btn-apply').onclick = async () => {
     try { const r = await api('/api/remotes/apply', { method: 'POST' }); console.log(r); } catch (e) { alert(e.message); }
     refresh();
   };
+  // auto-refresh switch: remembers the choice between visits
+  const saved = localStorage.getItem('ksmbui.autorefresh');
+  state.autorefresh = saved === null ? true : saved === '1';
+  const box = $('autorefresh');
+  if (box) {
+    box.checked = state.autorefresh;
+    box.onchange = () => setAutoRefresh(box.checked);
+  }
+  window.addEventListener('hashchange', () => {
+    const v = (location.hash || '').replace('#', '');
+    if (v && v !== state.view && VIEW_TITLES[v]) show(v);
+  });
   $('remote-add').onclick = () => $('remotes').appendChild(rowRemote());
   $('user-add').onclick = () => $('users').appendChild(rowUser());
   $('acl-mkdir').onclick = async () => {
@@ -404,7 +449,8 @@ async function startApp() {
     refresh();
   };
   await refresh();
-  state.timer = setInterval(refresh, 5000);
+  show(currentView());
+  setAutoRefresh(state.autorefresh);
 }
 
 /* ── «Файлы и папки»: права на папки в стиле Keenetic ─────────────────── */

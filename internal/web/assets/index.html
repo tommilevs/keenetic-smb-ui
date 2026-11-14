@@ -49,8 +49,13 @@
     <header class="top">
       <h1 id="title">Обзор</h1>
       <div class="top-actions">
-        <button class="btn ghost" id="btn-refresh">Обновить</button>
-        <button class="btn primary" id="btn-apply">Применить</button>
+        <label class="switch" id="autorefresh-wrap" title="Обновлять данные по таймеру">
+          <input type="checkbox" id="autorefresh" checked>
+          <span class="track" aria-hidden="true"></span>
+          <span class="switch-label">Автообновление</span>
+        </label>
+        <button class="btn ghost" id="btn-refresh" title="Перечитать данные с роутера прямо сейчас">Обновить</button>
+        <button class="btn primary" id="btn-apply" title="Записать настройки в SMB и перезапустить службу">Применить</button>
       </div>
     </header>
 
@@ -105,16 +110,26 @@
       <article class="card wide">
         <h3>Общие диски Proxmox</h3>
         <p class="hint">Подключаются в агрегированную шару. Пароли хранятся в конфиге на роутере.</p>
-        <div class="tablewrap"><table class="tbl"><thead><tr><th>Имя</th><th>Хост</th><th>Шара</th><th>Подкаталог</th><th>Логин</th><th>Пароль</th><th>Вкл</th><th>RO</th><th>Статус</th><th></th></tr></thead><tbody id="remotes"></tbody></table></div>
-        <div class="row"><button class="btn" id="remote-add">Добавить диск</button><button class="btn ghost" id="remotes-save">Сохранить список</button></div>
-        <p class="hint">Подкаталог — необязательный путь внутри шары (как «Подкаталог» при добавлении SMB-хранилища в Proxmox), например <code>proxmox</code> или <code>storage/llama/models</code>.</p>
+        <div class="tablewrap"><table class="tbl"><thead><tr>
+          <th title="Имя папки внутри общей шары">Имя</th>
+          <th title="IP-адрес хоста Proxmox, который раздаёт SMB">Хост</th>
+          <th title="Имя SMB-шары на этом хосте (без слэшей)">Шара</th>
+          <th title="Необязательная папка внутри шары — монтировать только её">Подкаталог</th>
+          <th title="SMB-логин на хосте Proxmox">Логин</th>
+          <th title="Пароль этого SMB-логина; хранится в config.json на роутере">Пароль</th>
+          <th title="Монтировать диск при запуске и по кнопке «Применить»">Вкл</th>
+          <th title="Read-Only: диск монтируется только для чтения — смотреть и копировать можно, записывать нельзя">RO <span class="help" title="RO = Read-Only, «только чтение». Диск монтируется с опцией ro: клиенты могут открывать и копировать файлы, но любая запись вернёт отказ. Так делают, когда SMB-пользователь на стороне Proxmox не имеет прав записи (например, папка принадлежит root) — иначе копирование падало бы с ACCESS_DENIED на середине.">?</span></th>
+          <th title="Текущее состояние монтирования на роутере">Статус</th><th></th>
+        </tr></thead><tbody id="remotes"></tbody></table></div>
+        <div class="row"><button class="btn" id="remote-add" title="Добавить ещё одну внешнюю SMB-шару">Добавить диск</button><button class="btn ghost" id="remotes-save" title="Сохранить список дисков в конфиг">Сохранить список</button></div>
+        <p class="hint"><b>Подсказки по колонкам.</b> «Вкл» — монтировать диск при старте и по кнопке «Применить». «RO» (read-only) — монтировать только для чтения: удобно, если на стороне Proxmox у этого логина нет прав записи. «Подкаталог» — необязательный путь внутри шары (как «Подкаталог» при добавлении SMB-хранилища в Proxmox), например <code>proxmox</code> или <code>storage/llama/models</code>. «Статус» показывает, смонтирован ли диск сейчас.</p>
       </article>
     </section>
 
     <section class="view" id="view-users">
       <article class="card wide">
         <h3>Пользователи SMB</h3>
-        <div class="tablewrap"><table class="tbl"><thead><tr><th>Логин</th><th>Пароль</th><th>Только чтение</th><th>Вкл</th><th></th></tr></thead><tbody id="users"></tbody></table></div>
+        <div class="tablewrap"><table class="tbl"><thead><tr><th>Логин</th><th>Пароль</th><th title="Запретить этому пользователю запись в шару">Только чтение</th><th title="Пользователь активен и может подключаться">Вкл</th><th></th></tr></thead><tbody id="users"></tbody></table></div>
         <div class="row"><button class="btn" id="user-add">Добавить пользователя</button>
           <button class="btn ghost" id="users-import" title="Прочитать пользователей из NDMS (ndmc)">Импорт из роутера</button>
           <button class="btn ghost" id="users-save">Сохранить</button></div>
@@ -187,7 +202,7 @@
             <label>Адрес прослушивания<input id="web-listen"></label>
             <label>Логин<input id="web-user"></label>
             <label>Пароль<input id="web-pass" type="password" placeholder="не менять"></label>
-            <label class="check"><input type="checkbox" id="web-ro"> Только чтение</label>
+            <label class="check" title="Разрешить панели только просмотр: настройки и кнопки сохранения будут недоступны"><input type="checkbox" id="web-ro"> Только чтение</label>
           </div>
         </article>
         <article class="card wide">

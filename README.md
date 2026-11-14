@@ -140,6 +140,18 @@ internet access required.
 | **Logs** | tail of the managed `samba.log` |
 | **Settings** | panel credentials, listen address, read-only mode, stats sampling, updates |
 
+UI details worth knowing:
+
+- **Deep links**: every section has its own hash (`#overview`, `#smb`, `#shares`,
+  `#users`, `#acl`, `#stats`, `#logs`, `#settings`), so a refresh keeps you where you
+  were and links can be shared.
+- **Contextual toolbar**: «Обновить» appears only on pages with live data, «Применить»
+  only where settings are written to `smb.conf`.
+- **Auto-refresh switch**: turn the 5-second polling on or off; the choice is stored in
+  the browser.
+- **Hover hints**: column headers and the `?` next to **RO** explain what each field
+  does (RO = read-only mount: browse and copy yes, write no).
+
 ## Aggregated disks
 
 Any SMB share reachable from the router can be mounted into the exported tree:
