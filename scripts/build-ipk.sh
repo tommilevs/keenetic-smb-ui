@@ -10,13 +10,14 @@ WORK="$ROOT/build/ipk"
 APP=keenetic-smb-ui
 
 # arch:entware-triple pairs (binary suffix -> package architecture)
+# GOARCH:Entware package Architecture (exact strings from the Entware feeds)
 PAIRS=(
   "arm64:aarch64-3.10"
-  "arm:armv7sf-k3.2"
-  "mipsle:mipselsf-k3.4"
-  "mips:mipssf-k3.4"
-  "amd64:x64-64"
-  "386:i386sf-k3.2"
+  "arm:armv7-3.2"
+  "mipsle:mipsel-3.4"
+  "mips:mips-3.4"
+  "amd64:x64-3.2"
+  "386:x86-2.6"
 )
 
 mkdir -p "$DIST" "$WORK"

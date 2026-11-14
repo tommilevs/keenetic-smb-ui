@@ -4,6 +4,21 @@ All notable changes are documented here. Versions follow `MAJOR.MINOR.PATCH`;
 every release publishes `.ipk` packages for all supported Entware architectures plus
 `Packages` / `Packages.gz` for use as an opkg feed.
 
+## 1.5.0 — зависимости внутри релиза
+
+- В релиз добавлены **все зависимости Samba 4.24.5** для `aarch64-3.10`,
+  `armv7-3.2`, `mipsel-3.4`, `mips-3.4`: `samba4-server`, `samba4-client`,
+  `samba4-libs`, `libgnutls`, `libopenssl`, `icu`, `libpam`, `libtirpc`, `attr`,
+  `zlib` и остальное (25–26 пакетов на архитектуру, ~16–17 МБ).
+- Установка теперь одной командой: добавить фид → `opkg update` →
+  `opkg install keenetic-smb-ui`. Ручной `opkg install samba4-server samba4-client`
+  больше не нужен.
+- Сгенерированный `Packages` использует реальные имена архитектур Entware
+  (`armv7-3.2`, `mipsel-3.4`, `mips-3.4`, `x64-3.2`, `x86-2.6`) вместо прежних
+  `armv7sf-k3.2` и т.п.
+- Проверено на роутере: `opkg install keenetic-smb-ui` из нашего фида поставил
+  приложение 1.5.0 и переустановил `samba4-client` прямо из релиза.
+
 ## 1.4.1 — выравнивание дерева папок
 
 - Длинные имена папок обрезаются многоточием и больше не заезжают под панель

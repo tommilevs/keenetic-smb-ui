@@ -79,21 +79,42 @@ pid/state/private каталоги — SMB роутера продолжает �
 ## Установка
 
 ```sh
+# один раз добавляем наш фид
+echo "src/gz keenetic-smb-ui https://github.com/tommilevs/keenetic-smb-ui/releases/latest/download" \
+  >> /opt/etc/opkg.conf
+
+# ставим — фид несёт и приложение, и все зависимости Samba
+opkg update
+opkg install keenetic-smb-ui
+```
+
+В релизе лежат `samba4-server`, `samba4-client` и весь набор зависимостей
+(`samba4-libs`, `libgnutls`, `libopenssl`, `icu`, `libpam`, `libtirpc`, …) для
+`aarch64-3.10`, `armv7-3.2`, `mipsel-3.4` и `mips-3.4`. `opkg` берёт всё по одной
+ссылке, поэтому установка пройдёт, даже если Entware-фид когда-нибудь потеряет эти
+пакеты.
+
+<details>
+<summary><b>Ручная установка без фида</b></summary>
+
+```sh
 opkg update
 opkg install samba4-server samba4-client
 
 # busybox wget на Keenetic без TLS — используем curl
-curl -fsSL -O https://github.com/tommilevs/keenetic-smb-ui/releases/latest/download/keenetic-smb-ui_1.1.0_aarch64-3.10.ipk
-opkg install ./keenetic-smb-ui_1.1.0_aarch64-3.10.ipk
+curl -fsSL -O https://github.com/tommilevs/keenetic-smb-ui/releases/latest/download/keenetic-smb-ui_1.5.0_aarch64-3.10.ipk
+opkg install ./keenetic-smb-ui_1.5.0_aarch64-3.10.ipk
 
 /opt/etc/init.d/S99keenetic-smb-ui status
 ```
 
+</details>
+
 <details>
 <summary><b>Установка как opkg-фид</b></summary>
 
-В каждом релизе лежат `Packages` и `Packages.gz`, поэтому репозиторий можно
-подключить как фид:
+Фид — рекомендуемый способ (см. выше). В каждом релизе лежат `Packages`,
+`Packages.gz` и сами пакеты Samba, поэтому:
 
 ```sh
 echo "src/gz keenetic-smb-ui https://github.com/tommilevs/keenetic-smb-ui/releases/latest/download" \

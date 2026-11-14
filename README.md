@@ -77,20 +77,42 @@ SMB 2.1, the newest dialect Keenetic's 4.9 kernel supports.
 ## Install
 
 ```sh
+# one-time: add the project feed
+echo "src/gz keenetic-smb-ui https://github.com/tommilevs/keenetic-smb-ui/releases/latest/download" \
+  >> /opt/etc/opkg.conf
+
+# then install — the feed carries the app AND the full Samba dependency set
+opkg update
+opkg install keenetic-smb-ui
+```
+
+The release contains `samba4-server`, `samba4-client` and their whole dependency
+closure (`samba4-libs`, `libgnutls`, `libopenssl`, `icu`, `libpam`, `libtirpc`, …) for
+`aarch64-3.10`, `armv7-3.2`, `mipsel-3.4` and `mips-3.4`. `opkg` resolves everything
+from the same URL, so the install still works if the Entware feed ever loses or
+changes those packages.
+
+<details>
+<summary><b>Manual install without a feed</b></summary>
+
+```sh
 opkg update
 opkg install samba4-server samba4-client
 
 # busybox wget on Keenetic has no TLS — use curl
-curl -fsSL -O https://github.com/tommilevs/keenetic-smb-ui/releases/latest/download/keenetic-smb-ui_1.1.0_aarch64-3.10.ipk
-opkg install ./keenetic-smb-ui_1.1.0_aarch64-3.10.ipk
+curl -fsSL -O https://github.com/tommilevs/keenetic-smb-ui/releases/latest/download/keenetic-smb-ui_1.5.0_aarch64-3.10.ipk
+opkg install ./keenetic-smb-ui_1.5.0_aarch64-3.10.ipk
 
 /opt/etc/init.d/S99keenetic-smb-ui status
 ```
 
+</details>
+
 <details>
 <summary><b>Install as an opkg feed</b></summary>
 
-Every release ships `Packages` and `Packages.gz`, so the repository can act as a feed:
+The feed is the recommended path (see above). Every release ships `Packages` and
+`Packages.gz` plus the vendored Samba packages, so:
 
 ```sh
 echo "src/gz keenetic-smb-ui https://github.com/tommilevs/keenetic-smb-ui/releases/latest/download" \
