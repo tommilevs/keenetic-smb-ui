@@ -1,0 +1,77 @@
+<p style="text-align:center"><img src="https://raw.githubusercontent.com/tommilevs/keenetic-smb-ui/main/assets/banner.svg" alt="keenetic-smb-ui" style="max-width:100%"></p>
+
+<p><b>keenetic-smb-ui</b> — собственный SMB-сервер с веб-панелью для роутеров <b>Keenetic на Entware</b>. Ставится обычным <code>.ipk</code>, поднимает отдельный Samba рядом со штатным SMB и собирает в одну шару диски Proxmox и USB-диски роутера.</p>
+
+<h2>Зачем это нужно</h2>
+<p>Штатный SMB Keenetic занимает <code>192.168.165.1:445</code>: его нельзя перевесить на другой адрес, он не умеет агрегировать хранилища и раздавать диски Proxmox. Приложение поднимает <b>второй, независимый SMB</b> на отдельном IP — встроенный сервер продолжает работать как раньше, оба живут одновременно.</p>
+<p>Внутри — Samba 4.24 из Entware со своими конфигом, pid- и state-каталогами, поэтому NDMS ничего не замечает и не конфликтует.</p>
+
+<h2>Возможности</h2>
+<ul>
+<li><b>Отдельный IP и интерфейс</b> для SMB (например <code>192.168.160.2</code> на <code>br0</code>), алиас <code>/32</code> приложение вешает само.</li>
+<li><b>Агрегированная шара</b>: внешние SMB-шары (Proxmox) и USB-диски роутера в одном дереве <code>\\IP\all</code>.</li>
+<li><b>Подкаталог у диска</b>: можно подключить не всю шару, а конкретную папку — как поле «Подкаталог» при добавлении SMB-хранилища в Proxmox.</li>
+<li><b>Права на папки с наследованием</b>, как в Keenetic: для каждого пользователя «Запрещён / Чтение / Чтение и запись», правило «наследуется» или «только здесь».</li>
+<li><b>Пользователи</b>: свои аккаунты и импорт из роутера одной кнопкой (<code>ndmc -c "show user"</code>).</li>
+<li><b>Веб-панель</b> на встроенных файлах (без CDN): обзор, SMB-сервер, диски, пользователи, доступ к папкам, статистика с графиками, логи, настройки, автообновление.</li>
+<li><b>Статистика</b>: load average, память, трафик, SMB-сессии, занятость дисков и история для графиков.</li>
+<li><b>Обновление из панели</b>: проверка GitHub Releases, скачивание нужного <code>.ipk</code>, установка через <code>opkg</code> и перезапуск службы.</li>
+<li><b>Один статический бинарник</b> без cgo; пакеты под <code>aarch64</code>, <code>armv7</code>, <code>mips</code>, <code>mipsle</code>, <code>i386</code>, <code>x86_64</code>.</li>
+</ul>
+
+<h2>Разделы панели</h2>
+<ul>
+<li><b>Обзор</b> — состояние сервера, шара, сессии, трафик, графики нагрузки, занятость дисков.</li>
+<li><b>SMB-сервер</b> — IP, бридж, рабочая группа, имя сервера, имя и путь шары, порты, протоколы, гость, «только чтение», <code>force user</code>, дополнительные строки <code>smb.conf</code>, старт/стоп/рестарт и просмотр конфига.</li>
+<li><b>Общие диски</b> — CRUD внешних шар, вкл/выкл, флаг «только чтение», подкаталог, живой статус монтирования.</li>
+<li><b>Пользователи</b> — аккаунты SMB, пароль и «только чтение», импорт из NDMS.</li>
+<li><b>Доступ к папкам</b> — матрица «папки × пользователи» с наследованием.</li>
+<li><b>Статистика / Логи / Настройки</b> — метрики, хвост <code>samba.log</code>, учётные данные панели, интервал статистики, обновления.</li>
+</ul>
+
+<h2>Установка</h2>
+<pre><code>opkg update
+opkg install samba4-server samba4-client
+
+# busybox wget на Keenetic без TLS — качаем curl'ом
+curl -fsSL -O https://github.com/tommilevs/keenetic-smb-ui/releases/latest/download/keenetic-smb-ui_1.3.4_aarch64-3.10.ipk
+opkg install ./keenetic-smb-ui_1.3.4_aarch64-3.10.ipk</code></pre>
+<p>После установки панель доступна на <code>http://&lt;ip-роутера&gt;:8099</code>, логин <code>admin</code>, пароль <code>lip368lip</code> (меняется в «Настройках»).</p>
+<p>Можно подключить и как opkg-фид — в каждом релизе лежат <code>Packages</code> и <code>Packages.gz</code>:</p>
+<pre><code>echo "src/gz keenetic-smb-ui https://github.com/tommilevs/keenetic-smb-ui/releases/latest/download" &gt;&gt; /opt/etc/opkg.conf
+opkg update
+opkg install keenetic-smb-ui</code></pre>
+
+<h2>Подключение дисков Proxmox</h2>
+<p>В разделе «Общие диски» добавляется строка: имя, хост, шара, (необязательно) подкаталог, логин, пароль, вкл, «только чтение». Приложение монтирует шару в агрегированное дерево и переэкспортирует её клиентам.</p>
+<p>На хосте Proxmox шара должна быть отдана аккаунту, который использует роутер; если каталог принадлежит root, помогает <code>force user = root</code> в <code>smb.conf</code> — иначе диск логично пометить «только чтение».</p>
+<p>Подробная пошаговая инструкция с примером трёх хостов: <a href="https://github.com/tommilevs/keenetic-smb-ui/blob/main/docs/proxmox-disks.ru.md">docs/proxmox-disks.ru.md</a>.</p>
+
+<h2>Права на папки</h2>
+<p>Каждая папка с правилами публикуется отдельной SMB-шарой, а внутри используется <code>read only = yes</code> + явный <code>write list</code>, поэтому ограничения делает сам Samba — POSIX ACL и xattr на смонтированных CIFS-дисках не нужны.</p>
+<ul>
+<li>уровни: «Запрещён», «Чтение», «Чтение и запись»;</li>
+<li>правило «наследуется» действует на вложенные папки, пока там нет своего правила;</li>
+<li>варианты «только здесь» ограничивают правило одной папкой;</li>
+<li>проверено: <code>admin</code> пишет в папку, <code>vms</code> видит её только на чтение, а при «Запрещён» получает <code>NT_STATUS_ACCESS_DENIED</code>.</li>
+</ul>
+
+<h2>Проверено на практике</h2>
+<ul>
+<li>Keenetic (aarch64, Entware, ядро 4.9-ndm): свой <code>smbd</code> на <code>192.168.160.2:445</code> рядом со штатным SMB.</li>
+<li>Три внешних диска Proxmox в одной шаре, включение/выключение и «только чтение» из панели.</li>
+<li>Импорт пользователей из NDMS и вход по ним в шару.</li>
+<li>Обновление 0.8.0 → 0.8.1 прямо из панели через GitHub Releases.</li>
+<li>Остальные архитектуры собираются, но на реальных устройствах пока не запускались.</li>
+</ul>
+
+<h2>Ссылки</h2>
+<ul>
+<li><b>GitHub:</b> <a href="https://github.com/tommilevs/keenetic-smb-ui">github.com/tommilevs/keenetic-smb-ui</a></li>
+<li><b>Релизы (.ipk под все архитектуры):</b> <a href="https://github.com/tommilevs/keenetic-smb-ui/releases">releases</a></li>
+<li><b>Английский README:</b> <a href="https://github.com/tommilevs/keenetic-smb-ui/blob/main/README.md">README.md</a></li>
+<li><b>Русский README:</b> <a href="https://github.com/tommilevs/keenetic-smb-ui/blob/main/README.ru.md">README.ru.md</a></li>
+</ul>
+
+<hr>
+<p><small>Лицензия <b>AGPL-3.0-or-later</b>: при копировании, форке или запуске как сетевой сервис нужно сохранять указание автора и ссылку на исходный репозиторий. Проект не связан с Keenetic Ltd. Вопросы, баги и пожелания — в этой теме или в GitHub Issues.</small></p>
