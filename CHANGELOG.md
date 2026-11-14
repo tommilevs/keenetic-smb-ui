@@ -4,6 +4,14 @@ All notable changes are documented here. Versions follow `MAJOR.MINOR.PATCH`;
 every release publishes `.ipk` packages for all supported Entware architectures plus
 `Packages` / `Packages.gz` for use as an opkg feed.
 
+## 1.5.1 — кнопка «Войти» в карточке
+
+- Исправлена вёрстка страницы входа: `.btn` наследовал `box-sizing: content-box`
+  после `all: unset`, из-за чего кнопка была шире карточки и вылезала за границу.
+  Теперь `box-sizing: border-box`, кнопка ровно по внутренней ширине.
+- Релиз снова несёт все зависимости Samba (111 ассетов), установка одной командой
+  через фид не изменилась.
+
 ## 1.5.0 — зависимости внутри релиза
 
 - В релиз добавлены **все зависимости Samba 4.24.5** для `aarch64-3.10`,
