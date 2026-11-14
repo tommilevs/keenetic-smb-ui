@@ -44,8 +44,10 @@ pid/state/private directories — the router's SMB keeps working exactly as befo
   straight from the web UI.
 - **Router users**: import accounts from NDMS (`ndmc -c "show user"`) and enable them
   for SMB with per-user passwords and read-only flags.
-- **Web panel** (Russian UI, dark theme): dashboard, SMB settings, disks, users, live
-  statistics with charts, Samba log, updates.
+- **«Files and folders» dialog**: browse the real share tree, create folders and set
+  per-user permissions with Keenetic-style inheritance.
+- **Web panel** (Russian UI, dark theme): dashboard, SMB settings, disks, users,
+  files and folders, live statistics with charts, Samba log, updates.
 - **Statistics**: load average, memory, network throughput, SMB sessions, disk usage
   and history for charts, sampled from `/proc` and `smbstatus`.
 - **Self-update**: the panel checks GitHub Releases, downloads the matching `.ipk`,
@@ -109,21 +111,6 @@ opkg install ./keenetic-smb-ui_1.5.0_aarch64-3.10.ipk
 </details>
 
 <details>
-<summary><b>Install as an opkg feed</b></summary>
-
-The feed is the recommended path (see above). Every release ships `Packages` and
-`Packages.gz` plus the vendored Samba packages, so:
-
-```sh
-echo "src/gz keenetic-smb-ui https://github.com/tommilevs/keenetic-smb-ui/releases/latest/download" \
-  >> /opt/etc/opkg.conf
-opkg update
-opkg install keenetic-smb-ui
-```
-
-</details>
-
-<details>
 <summary><b>Build from source</b></summary>
 
 ```sh
@@ -148,7 +135,7 @@ internet access required.
 | **SMB server** | IP, bridge, workgroup, server name, share name/path, ports, protocols, guest, read-only, `force user`, extra `smb.conf` lines, start/stop/restart, config preview |
 | **Disks** | remote shares CRUD, enable/disable, read-only flag, live mount status |
 | **Users** | SMB accounts, per-user password and read-only, one-click import from NDMS |
-| **Folder access** | Keenetic-style ACL matrix: per-folder shares, per-user read/write/deny, inheritance |
+| **Folder access** | «Files and folders» dialog: folder tree with sizes, create folder, per-user read/write/deny with inheritance |
 | **Statistics** | uptime, load, memory, network, SMB sessions, history chart |
 | **Logs** | tail of the managed `samba.log` |
 | **Settings** | panel credentials, listen address, read-only mode, stats sampling, updates |
@@ -308,14 +295,17 @@ aggregated tree mixes root-owned CIFS mounts with router disks.
 
 ## Supported platforms
 
-| Entware triple | Binary | Status |
+| Entware arch | Binary | Status |
 |---|---|---|
-| `aarch64-3.10` | 6.1 MB | tested on Keenetic (aarch64, NDMS 4.9-ndm-5) |
-| `armv7sf-k3.2` | 6.6 MB | built, not run on hardware |
-| `mipselsf-k3.4` | 7.4 MB | built, not run on hardware |
-| `mipssf-k3.4` | 7.4 MB | built, not run on hardware |
-| `i386sf-k3.2` | 6.5 MB | built, not run on hardware |
-| `x64-64` | 6.7 MB | built, runs under Entware x86_64 |
+| `aarch64-3.10` | 6.9 MB | tested on Keenetic (aarch64, NDMS 4.9-ndm-5) |
+| `armv7-3.2` | 7.4 MB | built, not run on hardware |
+| `mipsel-3.4` | 8.3 MB | built, not run on hardware |
+| `mips-3.4` | 8.3 MB | built, not run on hardware |
+| `x64-3.2` | 7.5 MB | built, runs under Entware x86_64 |
+| `x86-2.6` | 7.3 MB | built, runs under Entware i386 |
+
+Samba and its dependencies are shipped inside the release for the four Keenetic
+architectures, so a router does not depend on the Entware feed staying intact.
 
 ## Security notes
 
