@@ -19,12 +19,12 @@
 
 ## Why
 
-Keenetic's built-in SMB server owns `10.30.0.1:445`. It cannot serve aggregated
+Keenetic's built-in SMB server owns `192.168.1.1:445`. It cannot serve aggregated
 storage, cannot be moved to another IP, and cannot export Proxmox disks. This project
 adds a **second, independent SMB server** that co-exists with the native one:
 
 ```
-native NDMS SMB   10.30.0.1:445   (untouched)
+native NDMS SMB   192.168.1.1:445   (untouched)
 keenetic-smb-ui   10.30.0.2:445   (this app, Samba 4.24 from Entware)
 ```
 
@@ -67,7 +67,7 @@ pid/state/private directories — the router's SMB keeps working exactly as befo
      :8099    │    └── web UI (embedded assets, cookie auth, JSON API)              │
  ◄────────────┼──                                                                   │
               │                                                                    │
-10.30.0.1 │  native NDMS SMB (445) — untouched                                 │
+192.168.1.1   │  native NDMS SMB (445) — untouched                                 │
               └────────────────────────────────────────────────────────────────────┘
 ```
 
